@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BEU Hub — Everything a BEU Student Needs</title>
+<meta name="description" content="BEU Hub: PYQs, results, notices, attendance tracker, CGPA calculator, notes, AI tutor and free student tools for Bihar Engineering University students.">
+<meta name="theme-color" content="#5B5BF7">
+<!--
+  Content-Security-Policy: locks down which origins can supply scripts/styles/
+  frames/connections. Two notes on tradeoffs made here:
+   - 'unsafe-inline' is required for script-src because this app uses inline
+     onclick="..." handlers throughout (a full rewrite to addEventListener-only
+     would be a large refactor). This CSP still blocks loading a *script file*
+     from any origin other than the ones listed, which is the more common
+     injection vector (e.g. a compromised ad or a copy-pasted widget).
+   - frame-src is open (allows any https origin) because "open inside app"
+     for BEU/govt/education sites needs to embed arbitrary official domains
+     you don't control the list of in advance. connect-src should be tightened
+     to your actual Worker URL once you deploy one (see AI-SETUP.md).
+-->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src https://fonts.gstatic.com;
+  img-src 'self' data: https:;
+  connect-src 'self' https:;
+  frame-src https:;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self';
+  frame-ancestors 'self';
+">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<!-- ============ TOP NAV ============ -->
+<header class="topnav">
+  <div class="container topnav-inner">
+    <a href="#home" data-page-link="home" class="brand"><span class="brand-mark">BH</span> BEU Hub</a>
+    <nav class="nav-links">
+      <a href="#beu" data-page-link="beu">BEU</a>
+      <a href="#resources" data-page-link="resources">Resources</a>
+      <a href="#jobs" data-page-link="jobs">Jobs</a>
+      <a href="#tools" data-page-link="tools">Tools</a>
+      <a href="#games" data-page-link="games">Games</a>
+      <a href="#blog" data-page-link="blog">Blog</a>
+      <a href="#help" data-page-link="help">Help</a>
+    </nav>
+    <div class="nav-search">
+      <span>🔎</span>
+      <input type="text" class="global-search" placeholder="Search anything...">
+    </div>
+    <div class="nav-actions">
+      <button class="icon-btn theme-toggle" title="Toggle theme"><span class="theme-icon">🌙</span></button>
+      <button class="icon-btn hamburger" id="hamburgerBtn" title="Menu">☰</button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ MOBILE DRAWER ============ -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<aside class="drawer" id="drawer">
+  <div class="flex justify-between items-center mt-8">
+    <span class="brand">BEU Hub</span>
+  </div>
+  <nav class="mt-16">
+    <a href="#home" data-page-link="home">🏠 Home</a>
+    <a href="#beu" data-page-link="beu">BEU Section</a>
+    <a href="#resources" data-page-link="resources">Study Resources</a>
+    <a href="#jobs" data-page-link="jobs">Government Jobs</a>
+    <a href="#edu" data-page-link="edu">Educational Websites</a>
+    <a href="#connect" data-page-link="connect">Connect With Us</a>
+    <a href="#help" data-page-link="help">Student Help</a>
+    <a href="#tools" data-page-link="tools">Free Student Tools</a>
+    <a href="#games" data-page-link="games">Mini Games</a>
+    <a href="#blog" data-page-link="blog">Blog</a>
+    <a href="#reviews" data-page-link="reviews">Reviews & Suggestions</a>
+    <a href="#about" data-page-link="about">About App</a>
+    <a href="#donate" data-page-link="donate">Donate</a>
+    <a href="#premium" data-page-link="premium">Premium</a>
+    <a href="#privacy" data-page-link="privacy">Privacy Policy</a>
+    <a href="#disclaimer" data-page-link="disclaimer">Disclaimer</a>
+  </nav>
+</aside>
+
+<main id="mainContent">
+
+  <!-- ============ HOME (hub / overview page) ============ -->
+  <section class="page-section active" id="home">
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <div class="container hero-grid" style="grid-template-columns:1fr;">
+        <div>
+          <span class="hero-eyebrow">● Built for BEU students, by students</span>
+          <h1>Welcome to <span>BEU Hub</span></h1>
+          <p class="subtitle">Everything a BEU Student Needs in One Place — PYQs, results, notices, attendance, CGPA, notes and an AI tutor, all free.</p>
+          <div class="hero-ctas">
+            <a href="#resources" data-page-link="resources" class="btn btn-primary">Explore Resources</a>
+            <button class="btn btn-accent" id="heroAIBtn">AI Doubts Solver</button>
+            <a href="#resources-notes" data-page-link="resources-notes" class="btn btn-ghost">Upload Notes Info</a>
+          </div>
+          <div class="hero-search">
+            <div class="search-bar">
+              <span>🔎</span>
+              <input type="text" class="global-search" placeholder="Search anything...">
+            </div>
+          </div>
+        </div>
+        <div class="orbit-wrap" aria-hidden="true">
+          <div class="orbit-ring r1"></div>
+          <div class="orbit-ring r2"></div>
+          <div class="orbit-core">BEU<br>HUB</div>
+          <div class="orbit-item" style="top:2%; left:50%; transform:translate(-50%,0)">📄</div>
+          <div class="orbit-item" style="bottom:2%; left:50%; transform:translate(-50%,0)">🎯</div>
+          <div class="orbit-item" style="top:50%; left:0%; transform:translate(0,-50%)">💼</div>
+          <div class="orbit-item" style="top:50%; right:0%; transform:translate(0,-50%)">🤖</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ EXPLORE SECTIONS (hub cards) ============ -->
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Start here</span>
+          <h2>Explore BEU Hub</h2>
+          <p>Tap a section to open it as its own page — PYQs, tools, jobs, games and more.</p>
+        </div>
+        <div class="hub-grid">
+          <div class="hub-card" data-page-link="beu">
+            <div class="card-icon">📚</div>
+            <h3>BEU Section</h3>
+            <p>PYQs, results, notices, attendance tracker, CGPA calculator and timetable.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="resources">
+            <div class="card-icon">📘</div>
+            <h3>Study Resources</h3>
+            <p>Syllabus, notes, lab manuals, practical files and recommended books.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="jobs">
+            <div class="card-icon">🏛️</div>
+            <h3>Government Jobs</h3>
+            <p>Major recruitment boards relevant to engineering graduates.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="edu">
+            <div class="card-icon">🎓</div>
+            <h3>Educational Websites</h3>
+            <p>Quick access to national education portals like SWAYAM & NPTEL.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="tools">
+            <div class="card-icon">🧰</div>
+            <h3>Free Student Tools</h3>
+            <p>Everyday utilities that run entirely in your browser.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="games">
+            <div class="card-icon">🎮</div>
+            <h3>Mind Refresh Games</h3>
+            <p>Take a short brain break between study sessions.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="help">
+            <div class="card-icon">🆘</div>
+            <h3>Student Help</h3>
+            <p>Guides for hostel life, scholarships, careers and interviews.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="blog">
+            <div class="card-icon">📰</div>
+            <h3>Blog</h3>
+            <p>Career, coding, exam tips and tech news from the BEU Hub team.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="connect">
+            <div class="card-icon">🌐</div>
+            <h3>Connect With Us</h3>
+            <p>Follow BEU Hub for updates, tips and announcements.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="reviews">
+            <div class="card-icon">⭐</div>
+            <h3>Reviews & Suggestions</h3>
+            <p>Tell us what to fix or add next — it goes straight to the admin team.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </section>
+
+  <!-- ============ BEU SECTION ============ -->
+  <section class="section page-section" id="beu">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Core</span>
+        <h2>BEU Section</h2>
+        <p>Previous year questions, results, notices, attendance and your daily academic tools.</p>
+      </div>
+
+      <!-- PYQ Browser -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="flex items-center gap-12"><div class="card-icon">📚</div><h3>Previous Year Questions</h3></div>
+        <div class="form-row cols-3 mt-8">
+          <div><label>Branch</label><select id="pyqBranch"></select></div>
+          <div><label>Semester</label><select id="pyqSem"></select></div>
+          <div><label>Subject</label><select id="pyqSubject"></select></div>
+        </div>
+        <div id="pyqResults" class="grid mt-16"></div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-icon">📊</div>
+          <h3>BEU Results</h3>
+          <p>Check semester results directly on the official BEU result portal.</p>
+          <div class="card-link-row">
+            <button class="btn btn-primary btn-sm" onclick="openEmbed('https://results.beup.ac.in','BEU Results')">Open Results</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📢</div>
+          <h3>BEU Notice</h3>
+          <p>Latest official notices, circulars and exam updates from BEU.</p>
+          <div class="card-link-row">
+            <button class="btn btn-primary btn-sm" onclick="openEmbed('https://beu-bih.ac.in/notification','BEU Notice')">Open Notices</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Tracker -->
+      <div class="card mt-16" id="attendance">
+        <div class="flex items-center gap-12">
+          <div class="card-icon" style="background:linear-gradient(135deg,var(--primary),var(--accent)); color:#fff; font-weight:700;">%</div>
+          <div>
+            <h3>Daily Attendance Tracker</h3>
+            <p class="muted" style="font-size:.8rem; margin-top:2px;">Track your attendance privately — saved only on this device.</p>
+          </div>
+        </div>
+
+        <div class="pill-row mt-16" id="attCourseToggle">
+          <button class="pill active" data-course="btech">🎓 BTech</button>
+          <button class="pill" data-course="polytechnic">Polytechnic</button>
+        </div>
+
+        <div class="flex gap-8 mt-16" style="flex-wrap:wrap; align-items:center;">
+          <input type="text" id="attNewSubject" placeholder="Add subject e.g. Physics" style="flex:1; min-width:180px;">
+          <button class="btn btn-primary btn-sm" id="attAddSubjectBtn">+ Add</button>
+          <div class="flex items-center gap-8">
+            <label style="margin:0; white-space:nowrap;">Cutoff %</label>
+            <input type="number" id="attCutoff" value="75" min="0" max="100" style="width:72px;">
+          </div>
+        </div>
+
+        <div id="attSubjectList" class="mt-16" style="display:flex; flex-direction:column; gap:12px;"></div>
+        <p class="muted mt-16" style="font-size:.72rem">Saved only on this device (localStorage) — nothing is uploaded.</p>
+      </div>
+
+      <!-- CGPA Calculator -->
+      <div class="card mt-16" id="cgpa">
+        <div class="flex items-center gap-12"><div class="card-icon">🎯</div><h3>SGPA / CGPA Calculator</h3></div>
+        <div class="field mt-8"><label>Label this semester</label><input type="text" id="cgpaSemLabel" placeholder="e.g. Semester 3"></div>
+        <div id="cgpaRows" class="mt-8"></div>
+        <div class="flex gap-8 mt-8">
+          <button class="btn btn-ghost btn-sm" id="cgpaAddRow">+ Add subject</button>
+          <button class="btn btn-primary btn-sm" id="cgpaCalcBtn">Calculate SGPA & Save</button>
+        </div>
+        <div class="stat-grid mt-16">
+          <div class="stat-box"><div class="num" id="sgpaResult">—</div><div class="lbl">This semester SGPA</div></div>
+          <div class="stat-box"><div class="num" id="cgpaOverall">—</div><div class="lbl">Overall CGPA (saved)</div></div>
+        </div>
+        <table class="mt-16"><thead><tr><th>Semester</th><th>SGPA</th><th>Credits</th></tr></thead><tbody id="cgpaHistory"></tbody></table>
+        <button class="btn btn-ghost btn-sm mt-8" id="cgpaClearBtn">Clear saved history</button>
+      </div>
+
+      <!-- Timetable -->
+      <div class="card mt-16" id="timetable">
+        <div class="flex items-center gap-12"><div class="card-icon">🗓️</div><h3>Today's Time Table</h3></div>
+        <div class="form-row cols-2 mt-8">
+          <div><label>Day</label><select id="ttDay"></select></div>
+          <div><label>Time</label><input type="text" id="ttTime" placeholder="e.g. 09:00"></div>
+        </div>
+        <div class="form-row cols-3 mt-8">
+          <div><label>Subject</label><input type="text" id="ttSubject"></div>
+          <div><label>Faculty</label><input type="text" id="ttFaculty"></div>
+          <div><label>Room No.</label><input type="text" id="ttRoom"></div>
+        </div>
+        <div class="flex gap-8 mt-8">
+          <button class="btn btn-primary btn-sm" id="ttAddBtn">+ Add class</button>
+          <button class="btn btn-ghost btn-sm" id="ttReminderBtn">🔔 Enable Reminders</button>
+        </div>
+        <table class="mt-16"><thead><tr><th>Time</th><th>Subject</th><th>Faculty</th><th>Room</th><th></th></tr></thead><tbody id="ttTableBody"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESOURCES ============ -->
+  <section class="section page-section" id="resources" style="background:var(--surface-2)">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Library</span>
+        <h2>Study Resources</h2>
+        <p>Syllabus and PYQs are curated by the admin team. Notes, lab manuals and books are organized for quick access.</p>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center gap-12"><div class="card-icon">📘</div><h3>Syllabus</h3></div>
+        <div class="form-row cols-3 mt-8">
+          <div><label>Branch</label><select id="syllabusBranch"></select></div>
+          <div><label>Semester</label><select id="syllabusSem"></select></div>
+          <div><label>Subject</label><select id="syllabusSubject"></select></div>
+        </div>
+        <div id="syllabusResults" class="grid mt-16"></div>
+      </div>
+
+      <div class="grid grid-4 mt-16" id="resources-notes">
+        <div class="card">
+          <div class="card-icon">📝</div><h3>Notes</h3>
+          <p>Curated notes, subject-wise. Admin approved before publishing.</p>
+          <div class="tags"><span class="tag">Branch-wise</span><span class="tag">Sem-wise</span></div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🧪</div><h3>Lab Manual</h3>
+          <p>Semester-wise lab manuals for practicals.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🗂️</div><h3>Practical Files</h3>
+          <p>Sample practical files organized by semester.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📖</div><h3>Important Books</h3>
+          <p>Subject-wise recommended reference books.</p>
+        </div>
+      </div>
+      <p class="muted mt-16" style="font-size:.8rem">All uploads here are managed by the BEU Hub admin team — this platform does not accept public/student uploads.</p>
+    </div>
+  </section>
+
+  <!-- ============ GOVT JOBS ============ -->
+  <section class="section page-section" id="jobs">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Career</span>
+        <h2>Government Jobs</h2>
+        <p>Track major recruitment boards relevant to engineering graduates.</p>
+      </div>
+      <div class="grid grid-4" id="jobsGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ EDU WEBSITES ============ -->
+  <section class="section page-section" id="edu" style="background:var(--surface-2)">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Official</span>
+        <h2>Important Educational Websites</h2>
+        <p>Quick access to national education portals.</p>
+      </div>
+      <div class="grid grid-4" id="eduGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ CONNECT ============ -->
+  <section class="section page-section" id="connect">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Community</span>
+        <h2>Connect With Us</h2>
+        <p>Follow BEU Hub for updates, tips and announcements.</p>
+      </div>
+      <div class="grid grid-4" id="socialGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ STUDENT HELP ============ -->
+  <section class="section page-section" id="help" style="background:var(--surface-2)">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Guidance</span>
+        <h2>Student Help</h2>
+        <p>Practical guides for hostel life, scholarships, careers and interviews.</p>
+      </div>
+      <div class="grid grid-4" id="helpGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ AI TOOLS ============ -->
+  <section class="section page-section" id="tools">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Toolbox</span>
+        <h2>Free Student Tools</h2>
+        <p>Everyday utilities that run entirely in your browser.</p>
+      </div>
+      <div class="grid grid-4" id="toolsGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ MINI GAMES ============ -->
+  <section class="section page-section" id="games" style="background:var(--surface-2)">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Break time</span>
+        <h2>Mind Refresh Games</h2>
+        <p>Take a short brain break between study sessions.</p>
+      </div>
+      <div class="grid grid-4" id="gamesGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ BLOG ============ -->
+  <section class="section page-section" id="blog">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Reads</span>
+        <h2>Blog</h2>
+        <p>Career, coding, exam tips and tech news — published by the BEU Hub team.</p>
+      </div>
+      <div class="grid grid-3" id="blogGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ REVIEWS ============ -->
+  <section class="section page-section" id="reviews" style="background:var(--surface-2)">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+
+      <!-- Ad slot demo -->
+      <div class="ad-slot mt-8">Ad space — sample banner (hidden automatically for Premium users) <button class="btn btn-ghost btn-sm mt-8" id="premiumToggleBtn" style="display:block;margin:10px auto 0">Simulate Premium (demo)</button></div>
+
+      <div class="section-head mt-16">
+        <span class="eyebrow">Feedback</span>
+        <h2>Reviews & Suggestions</h2>
+        <p>Tell us what to fix or add next — it goes straight to the admin team.</p>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr; max-width:520px;">
+        <form id="reviewForm" class="card">
+          <div class="field"><label>Name</label><input type="text" id="revName" placeholder="Your name (optional)"></div>
+          <div class="field"><label>Email</label><input type="email" id="revEmail" placeholder="you@example.com (optional)"></div>
+          <div class="field">
+            <label>Rating</label>
+            <div style="font-size:1.4rem; cursor:pointer;">
+              <span class="star" data-val="1">★</span><span class="star" data-val="2">★</span><span class="star" data-val="3">★</span><span class="star" data-val="4">★</span><span class="star" data-val="5">★</span>
+            </div>
+          </div>
+          <div class="field"><label>Feedback / Suggestion</label><textarea id="revFeedback" rows="4" placeholder="What should we add or improve?"></textarea></div>
+          <button class="btn btn-primary btn-block" type="submit">Submit Feedback</button>
+        </form>
+      </div>
+      <div class="grid grid-3 mt-16" id="reviewsList"></div>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT ============ -->
+  <section class="page-section section" id="about">
+    <div class="container" style="max-width:720px;">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <span class="eyebrow">About</span>
+      <h2 class="mt-8">About BEU Hub</h2>
+      <h3 class="mt-16">Mission</h3>
+      <p class="muted">To put every resource a Bihar Engineering University student needs — papers, results, notices, notes and tools — in one fast, free, ad-light place, with zero sign-up friction.</p>
+      <h3 class="mt-16">Vision</h3>
+      <p class="muted">A future where no BEU student is stuck searching ten different Telegram channels for one PDF.</p>
+      <h3 class="mt-16">Why GenZ BEU Hub</h3>
+      <p class="muted">Built mobile-first, dark-mode by default, and designed the way students actually browse — quick cards, quick answers, no clutter.</p>
+      <h3 class="mt-16">Developer</h3>
+      <p class="muted">Independently built and maintained by a small student-led team.</p>
+      <h3 class="mt-16">Version</h3>
+      <p class="muted">v1.0.0</p>
+    </div>
+  </section>
+
+  <!-- ============ DONATE ============ -->
+  <section class="page-section section" id="donate">
+    <div class="container" style="max-width:520px;">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <span class="eyebrow">Support</span>
+      <h2 class="mt-8">Support BEU Hub</h2>
+      <div class="card mt-16 text-center">
+        <div style="width:180px;height:180px;background:var(--surface-2);border-radius:14px;margin:0 auto;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:.8rem;">UPI QR placeholder</div>
+        <p class="mt-16"><b>UPI ID:</b> beuhub@upi</p>
+        <a class="btn btn-primary btn-block mt-8" href="upi://pay?pa=beuhub@upi&pn=BEU%20Hub">Donate via UPI</a>
+        <p class="muted mt-16" style="font-size:.8rem">Every contribution helps keep servers running and content free for all BEU students. Thank you 💙</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PREMIUM ============ -->
+  <section class="page-section section" id="premium">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <span class="eyebrow">Go further</span>
+      <h2 class="mt-8">Premium Membership</h2>
+      <p class="muted">Support the platform and unlock extras. (Payments not wired up in this build — informational only.)</p>
+      <div class="grid grid-3 mt-16">
+        <div class="card"><h3>Monthly</h3><p class="muted">Flexible, cancel anytime.</p></div>
+        <div class="card"><h3>Yearly</h3><p class="muted">Best value for the full academic year.</p></div>
+        <div class="card"><h3>Lifetime</h3><p class="muted">One-time, forever access.</p></div>
+      </div>
+      <div class="card mt-16">
+        <h3>Benefits</h3>
+        <div class="tags mt-8">
+          <span class="tag">No ads</span><span class="tag">Premium notes</span><span class="tag">Premium PYQs</span>
+          <span class="tag">Exclusive mock tests</span><span class="tag">Priority AI</span><span class="tag">Premium downloads</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PRIVACY ============ -->
+  <section class="page-section section" id="privacy">
+    <div class="container" style="max-width:720px;">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <span class="eyebrow">Legal</span>
+      <h2 class="mt-8">Privacy Policy</h2>
+      <p class="muted mt-16">BEU Hub does not require sign-up, login, or email verification. We do not operate user accounts.</p>
+      <p class="muted mt-16">Attendance records, timetables, CGPA history and AI chat history are stored only in your browser's local storage, on your device. They are never uploaded to any server operated by BEU Hub.</p>
+      <p class="muted mt-16">Feedback submitted through the Reviews & Suggestions form (name/email optional) is stored locally on your device in this build; in a production deployment such feedback would be sent to the admin team for the sole purpose of improving the platform.</p>
+      <p class="muted mt-16">Links to third-party sites (BEU, government portals, educational platforms) are governed by their own privacy policies.</p>
+    </div>
+  </section>
+
+  <!-- ============ DISCLAIMER ============ -->
+  <section class="page-section section" id="disclaimer">
+    <div class="container" style="max-width:720px;">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <span class="eyebrow">Legal</span>
+      <h2 class="mt-8">Disclaimer</h2>
+      <p class="muted mt-16"><b>This platform is independent and is not officially affiliated with Bihar Engineering University (BEU).</b></p>
+      <p class="muted mt-16">All trademarks, logos and official content referenced belong to their respective owners. Results, notices and other official information should always be verified on BEU's own website.</p>
+      <h3 class="mt-16">Terms</h3>
+      <p class="muted mt-8">By using BEU Hub you agree that it is provided "as is" without warranty, and that the developers are not liable for decisions made based on information found here.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ TOAST ============ -->
+<div class="toast" id="toast"></div>
+
+<!-- ============ GENERIC PANEL / MODAL ============ -->
+<div class="panel-overlay" id="panelOverlay">
+  <div class="panel">
+    <div class="panel-head">
+      <h3 id="panelTitle">Title</h3>
+      <button class="close-x" id="panelCloseBtn">✕</button>
+    </div>
+    <div id="panelBody"></div>
+  </div>
+</div>
+
+<!-- ============ AI CHAT ============ -->
+<button class="ai-fab" id="aiFab" title="GenZ AI Tutor">🤖</button>
+<div class="ai-chat-window" id="aiChatWindow">
+  <div class="ai-chat-head">
+    <span class="dot" id="aiStatusDot"></span>
+    <div>
+      <div style="font-weight:700; font-size:.9rem;">GenZ AI Tutor</div>
+      <div class="muted" style="font-size:.7rem;">Explain • Notes • MCQs • Debug • Hinglish</div>
+    </div>
+    <button class="close-x" style="margin-left:auto" id="aiSettingsBtn" title="AI backend settings">⚙️</button>
+    <button class="close-x" id="aiClearBtn" title="Clear chat">🗑️</button>
+    <button class="close-x" id="aiCloseBtn">✕</button>
+  </div>
+  <div class="ai-quick">
+    <button data-prompt="Explain thermodynamics in simple terms">Explain a topic</button>
+    <button data-prompt="Generate 5 MCQs on data structures">Generate MCQs</button>
+    <button data-prompt="Debug this code: for(i=0;i<10;i++) print(i)">Debug code</button>
+    <button data-prompt="Give me a career roadmap for CSE branch">Roadmap</button>
+  </div>
+  <div class="ai-chat-body" id="aiChatBody"></div>
+  <div class="ai-chat-input">
+    <button class="icon-btn" id="aiVoiceBtn" title="Voice input">🎙️</button>
+    <textarea id="aiInput" placeholder="Ask anything… (English ya Hinglish)"></textarea>
+    <button class="btn btn-primary btn-sm" id="aiSendBtn">Send</button>
+  </div>
+</div>
+
+<!-- ============ BOTTOM NAV (mobile) ============ -->
+<nav class="bottom-nav">
+  <a href="#home" data-page-link="home"><span>🏠</span>Home</a>
+  <a href="#resources" data-page-link="resources"><span>📚</span>Resources</a>
+  <a href="#tools" data-page-link="tools"><span>🧰</span>Tools</a>
+  <a href="#jobs" data-page-link="jobs"><span>🏛️</span>Jobs</a>
+  <a href="#help" data-page-link="help"><span>🆘</span>Help</a>
+</nav>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h4>BEU Hub</h4>
+        <a href="#about" data-page-link="about">About</a>
+        <a href="#privacy" data-page-link="privacy">Privacy Policy</a>
+        <a href="#disclaimer" data-page-link="disclaimer">Disclaimer</a>
+        <a href="#disclaimer" data-page-link="disclaimer">Terms</a>
+      </div>
+      <div>
+        <h4>Get help</h4>
+        <a href="#reviews" data-page-link="reviews">Feedback</a>
+        <a href="mailto:hello@beuhub.example">Contact</a>
+        <a href="#donate" data-page-link="donate">Donate</a>
+        <a href="#premium" data-page-link="premium">Premium</a>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <a href="#beu" data-page-link="beu">BEU Section</a>
+        <a href="#resources" data-page-link="resources">Resources</a>
+        <a href="#jobs" data-page-link="jobs">Govt Jobs</a>
+        <a href="#games" data-page-link="games">Games</a>
+      </div>
+      <div>
+        <h4>Install</h4>
+        <button class="btn btn-primary btn-sm install-btn" style="display:none">📲 Install App</button>
+        <p class="muted mt-8" style="font-size:.78rem">Works offline for browsing after first visit.</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="yearNow"></span> BEU Hub — v1.0.0</span>
+      <span>Independent platform, not officially affiliated with BEU.</span>
+    </div>
+  </div>
+</footer>
+
+<!-- Third-party libs used by the tools (loaded lazily; tools show a friendly message if offline) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

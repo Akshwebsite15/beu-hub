@@ -1,0 +1,15 @@
+{
+  "name": "BEU Hub",
+  "short_name": "BEU Hub",
+  "description": "Everything a BEU Student Needs in One Place — PYQs, results, notices, attendance, CGPA, notes, AI tutor and free tools.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B0F1A",
+  "theme_color": "#5B5BF7",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
