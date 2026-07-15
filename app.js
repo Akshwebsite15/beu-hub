@@ -133,7 +133,7 @@ const BRANCH_SUBJECTS = {
   CSE: {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
     2: ['Chemistry', 'Engineering Physics'],
-    3: ['Data Structure and Algorithms', 'Object Oriented Programming (Java)', 'Discrete Mathematics and Graph Theory', 'Operating System'],
+    3: ['Data Structure and Algorithms', 'Digital Electronics', 'Discrete Mathematics and Graph Theory', 'Object Oriented Programming (Java)', 'Operating System'],
     4: ['Computer Organization and Architecture', 'Design and Analysis of Algorithms', 'Computer Networks', 'Database Management Systems', 'Formal Language and Automata Theory']
   },
   ECE: {
@@ -230,7 +230,20 @@ const RESOURCE_FILES = {
     'CE__3__Surveying and Geomatics': './pyqs/ce-sem3-surveying-and-geomatics.pdf'
   },
   syllabus: {},
-  notes: {},
+  notes: {
+    // CSE — Semester 3 — admin-curated notes
+    'CSE__3__Data Structure and Algorithms': './notes/cse-sem3-data-structure-and-algorithms.pdf',
+    'CSE__3__Digital Electronics': './notes/cse-sem3-digital-electronics.pdf',
+    'CSE__3__Discrete Mathematics and Graph Theory': './notes/cse-sem3-discrete-mathematics-graph-theory.pdf',
+    'CSE__3__Object Oriented Programming (Java)': './notes/cse-sem3-object-oriented-programming.pdf',
+    'CSE__3__Operating System': './notes/cse-sem3-operating-system.pdf',
+    // CSE — Semester 4 — admin-curated notes
+    'CSE__4__Computer Organization and Architecture': './notes/cse-sem4-computer-organization-and-architecture.pdf',
+    'CSE__4__Design and Analysis of Algorithms': './notes/cse-sem4-design-and-analysis-of-algorithms.pdf',
+    'CSE__4__Computer Networks': './notes/cse-sem4-computer-networks.pdf',
+    'CSE__4__Database Management Systems': './notes/cse-sem4-database-management-systems.pdf',
+    'CSE__4__Formal Language and Automata Theory': './notes/cse-sem4-formal-language-and-automata-theory.pdf'
+  },
   lab: {},
   practical: {},
   books: {}
@@ -1603,6 +1616,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const run = ()=> buildBrowser(prefix+'Results', {branchSel:b, semSel:s, subjSel:sub}, prefix);
     b.addEventListener('change', run); s.addEventListener('change', run);
     run();
+  });
+
+  // Notes / Lab Manual / Practical Files / Important Books cards
+  $$('#resources-notes [data-resource-open]').forEach(card=>{
+    card.addEventListener('click', ()=> openResourcePanel(card.dataset.resourceOpen, card.dataset.resourceTitle));
   });
 
   // Premium demo toggle
