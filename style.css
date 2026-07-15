@@ -410,6 +410,11 @@ body.is-premium .ad-slot::before{ content:"Ads hidden — Premium demo active"; 
 .mem-cell{aspect-ratio:1; background:var(--primary); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#fff;}
 .g2048-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-width:320px; margin:14px auto; background:var(--surface-2); padding:8px; border-radius:12px;}
 .g2048-cell{aspect-ratio:1; background:var(--surface); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.1rem;}
+.snake-wrap{display:flex; justify-content:center; margin:0 auto 14px;}
+#snake-canvas{border-radius:10px; border:1px solid var(--border); max-width:100%; touch-action:none;}
+.snake-controls{display:grid; grid-template-areas:". u ." "l . r" ". d ."; grid-template-columns:56px 56px 56px; grid-template-rows:44px 44px 44px; gap:6px; justify-content:center; margin:0 auto; max-width:190px;}
+.snake-btn{background:var(--surface-2); border:1px solid var(--border); border-radius:10px; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; user-select:none;}
+.snake-btn:active{background:var(--primary); color:#fff;}
 
 /* Utility */
 .flex{display:flex;} .items-center{align-items:center;} .justify-between{justify-content:space-between;}

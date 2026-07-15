@@ -326,7 +326,7 @@ const GAMES = [
   {id:'g2048', name:'2048', icon:'🔢', ready:true},
   {id:'reaction', name:'Reaction Test', icon:'⚡', ready:true},
   {id:'typing', name:'Typing Speed Test', icon:'⌨️', ready:true},
-  {id:'snake', name:'Snake', icon:'🐍', ready:false},
+  {id:'snake', name:'Snake', icon:'🐍', ready:true},
   {id:'sudoku', name:'Sudoku', icon:'🔲', ready:false},
   {id:'quiz', name:'Quiz Game', icon:'❓', ready:false}
 ];
@@ -1243,7 +1243,19 @@ function openGame(id){
     memory: ()=>`<div class="mem-grid" id="mem"></div><p class="text-center mt-8 muted" id="mem-status">Find all pairs!</p>`,
     g2048: ()=>`<div class="g2048-grid" id="g2048"></div><p class="muted text-center mt-8">Use arrow keys (desktop) or swipe.</p><p class="text-center"><b id="g2048-score">Score: 0</b></p>`,
     reaction: ()=>`<div id="reaction-box" style="height:200px;border-radius:14px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-weight:600;cursor:pointer">Click to start</div><p class="text-center mt-16" id="reaction-result"></p>`,
-    typing: ()=>`<p id="typing-text" style="font-family:var(--font-mono); background:var(--surface-2); padding:12px; border-radius:10px;">The quick brown fox jumps over the lazy dog while BEU students prepare for exams.</p><textarea id="typing-input" rows="3" style="width:100%" class="mt-16" placeholder="Start typing here…"></textarea><p class="mt-8" id="typing-result"></p>`
+    typing: ()=>`<p id="typing-text" style="font-family:var(--font-mono); background:var(--surface-2); padding:12px; border-radius:10px;">The quick brown fox jumps over the lazy dog while BEU students prepare for exams.</p><textarea id="typing-input" rows="3" style="width:100%" class="mt-16" placeholder="Start typing here…"></textarea><p class="mt-8" id="typing-result"></p>`,
+    snake: ()=>`
+      <div class="text-center mb-8"><b id="snake-score">Score: 0</b></div>
+      <div class="snake-wrap"><canvas id="snake-canvas" width="280" height="280"></canvas></div>
+      <div class="snake-controls">
+        <button class="snake-btn" data-dir="u" style="grid-area:u">▲</button>
+        <button class="snake-btn" data-dir="l" style="grid-area:l">◀</button>
+        <button class="snake-btn" data-dir="r" style="grid-area:r">▶</button>
+        <button class="snake-btn" data-dir="d" style="grid-area:d">▼</button>
+      </div>
+      <div class="text-center mt-16"><button class="btn btn-ghost btn-sm" id="snake-restart">Restart</button></div>
+      <p class="muted text-center mt-8">Use arrow keys or the buttons. Eat the food, avoid the walls and yourself.</p>
+    `
   };
   const render = renderers[id];
   if(!render){ toast('Coming soon'); return; }
@@ -1363,6 +1375,84 @@ function wireGame(id){
         q('#typing-result').innerHTML = `<b>${wpm} WPM</b> · ${acc}% accuracy`;
       }
     });
+  }
+  if(id==='snake'){
+    const canvas = q('#snake-canvas'); const ctx = canvas.getContext('2d');
+    const cell = 20, cols = 14, rows = 14;
+    const css = getComputedStyle(document.documentElement);
+    const colBg = (css.getPropertyValue('--surface-2')||'#eee').trim() || '#eee';
+    const colSnake = (css.getPropertyValue('--primary')||'#1d9e75').trim() || '#1d9e75';
+    const colFood = (css.getPropertyValue('--danger')||'#e24b4a').trim() || '#e24b4a';
+    let snake, dir, nextDir, food, score, alive, timer;
+
+    function rndFood(){
+      let p;
+      do{ p = {x:Math.floor(Math.random()*cols), y:Math.floor(Math.random()*rows)}; }
+      while(snake.some(s=>s.x===p.x && s.y===p.y));
+      return p;
+    }
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = colBg;
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = colFood;
+      ctx.fillRect(food.x*cell+2, food.y*cell+2, cell-4, cell-4);
+      snake.forEach((s,i)=>{
+        ctx.globalAlpha = i===0 ? 1 : 0.85;
+        ctx.fillStyle = colSnake;
+        ctx.fillRect(s.x*cell+1, s.y*cell+1, cell-2, cell-2);
+      });
+      ctx.globalAlpha = 1;
+      if(!alive){
+        ctx.fillStyle = 'rgba(0,0,0,.55)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('Game over', canvas.width/2, canvas.height/2-8);
+        ctx.font = '13px sans-serif';
+        ctx.fillText('Tap restart to play again', canvas.width/2, canvas.height/2+14);
+      }
+    }
+    function tick(){
+      if(!document.body.contains(canvas)){ clearInterval(timer); return; }
+      if(!alive) return;
+      dir = nextDir;
+      const head = {...snake[0]};
+      if(dir==='l') head.x--; if(dir==='r') head.x++; if(dir==='u') head.y--; if(dir==='d') head.y++;
+      if(head.x<0 || head.x>=cols || head.y<0 || head.y>=rows || snake.some(s=>s.x===head.x && s.y===head.y)){
+        alive = false; draw(); toast('Game over! Score: '+score); return;
+      }
+      snake.unshift(head);
+      if(head.x===food.x && head.y===food.y){
+        score += 10; q('#snake-score').textContent = 'Score: '+score; food = rndFood();
+      } else {
+        snake.pop();
+      }
+      draw();
+    }
+    function setDir(d){
+      const opp = {l:'r', r:'l', u:'d', d:'u'};
+      if(opp[d]===dir) return;
+      nextDir = d;
+    }
+    function reset(){
+      snake = [{x:6,y:7},{x:5,y:7},{x:4,y:7}];
+      dir = 'r'; nextDir = 'r'; score = 0; alive = true;
+      food = rndFood();
+      q('#snake-score').textContent = 'Score: 0';
+      draw();
+      clearInterval(timer);
+      timer = setInterval(tick, 160);
+    }
+    document.addEventListener('keydown', function handler(e){
+      if(!document.body.contains(canvas)){ document.removeEventListener('keydown', handler); return; }
+      if(e.key==='ArrowLeft') setDir('l'); if(e.key==='ArrowRight') setDir('r');
+      if(e.key==='ArrowUp') setDir('u'); if(e.key==='ArrowDown') setDir('d');
+      if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) e.preventDefault();
+    });
+    $$('.snake-btn', panel).forEach(b=> b.addEventListener('click', ()=> setDir(b.dataset.dir)));
+    q('#snake-restart').addEventListener('click', reset);
+    reset();
   }
 }
 
