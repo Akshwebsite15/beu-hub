@@ -348,6 +348,19 @@ th{color:var(--text-dim); font-weight:600; font-size:.75rem; text-transform:uppe
 .hub-card:hover .hub-card-cta{gap:10px;}
 .hub-card .hub-card-cta{transition:gap .18s ease;}
 
+/* ---------- Quick Links (compact icon shortcuts) ---------- */
+.qlinks-group{margin-bottom:26px;}
+.qlinks-group:last-child{margin-bottom:0;}
+.qlinks-group-title{font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); margin-bottom:14px;}
+.qlinks-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px 8px;}
+@media(min-width:520px){.qlinks-grid{grid-template-columns:repeat(4,1fr);}}
+@media(min-width:820px){.qlinks-grid{grid-template-columns:repeat(6,1fr);}}
+.qlink{display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; text-decoration:none; cursor:pointer; padding:4px; border-radius:12px; transition:transform .15s ease;}
+.qlink:hover{transform:translateY(-3px);}
+.qlink-icon{width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.4rem; box-shadow:var(--shadow); transition:box-shadow .15s ease;}
+.qlink:hover .qlink-icon{box-shadow:var(--shadow-lg);}
+.qlink span:last-child{font-size:.74rem; font-weight:600; color:var(--text); line-height:1.2;}
+
 /* ---------- Footer ---------- */
 footer{background:var(--surface); border-top:1px solid var(--border); padding:40px 0 24px; margin-top:40px;}
 .footer-grid{display:grid; gap:24px; grid-template-columns:repeat(2,1fr);}

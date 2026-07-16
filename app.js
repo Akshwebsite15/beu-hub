@@ -134,7 +134,7 @@ const BRANCH_SUBJECTS = {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
     2: ['Chemistry', 'Engineering Physics'],
     3: ['Data Structure and Algorithms', 'Digital Electronics', 'Discrete Mathematics and Graph Theory', 'Object Oriented Programming (Java)', 'Operating System'],
-    4: ['Computer Organization and Architecture', 'Design and Analysis of Algorithms', 'Computer Networks', 'Database Management Systems', 'Formal Language and Automata Theory']
+    4: ['Computer Organization and Architecture', 'Computer Networks', 'Database Management Systems', 'Design and Analysis of Algorithms', 'Effective Technical Communication', 'Formal Language and Automata Theory']
   },
   ECE: {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
@@ -142,10 +142,30 @@ const BRANCH_SUBJECTS = {
     3: ['Analog Electronic Circuits', 'Data Structure and Algorithms', 'Digital Electronics', 'Electrical Circuit Analysis', 'Electromagnetic Fields', 'Engineering Mathematics III', 'Engineering Mechanics', 'Object Oriented Programming (C++)', 'Technical Writing']
   },
   ME: {
+    1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
+    2: ['Chemistry', 'Engineering Physics'],
     3: ['Analog Electronic Circuits', 'Basic Electronics Engineering', 'Digital Electronics', 'Discrete Mathematics and Graph Theory', 'Electrical Circuit Analysis', 'Electromagnetic Fields', 'Engineering Mathematics III', 'Engineering Mechanics']
   },
   CE: {
+    1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
+    2: ['Chemistry', 'Engineering Physics'],
     3: ['Computer-Aided Civil Engineering Drawing', 'Introduction to Civil Engineering', 'Surveying and Geomatics']
+  },
+  IT: {
+    1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
+    2: ['Chemistry', 'Engineering Physics']
+  },
+  EE: {
+    1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
+    2: ['Chemistry', 'Engineering Physics']
+  },
+  'CSE (AI & ML)': {
+    1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
+    2: ['Chemistry', 'Engineering Physics']
+  },
+  'CSE (Data Science)': {
+    1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
+    2: ['Chemistry', 'Engineering Physics']
   }
 };
 
@@ -229,7 +249,103 @@ const RESOURCE_FILES = {
     'CE__3__Introduction to Civil Engineering': './pyqs/ce-sem3-introduction-to-civil-engineering.pdf',
     'CE__3__Surveying and Geomatics': './pyqs/ce-sem3-surveying-and-geomatics.pdf'
   },
-  syllabus: {},
+  syllabus: {
+    // CSE — Semester 3 — official BEU syllabus (session 2024-2028)
+    'CSE__3__Data Structure and Algorithms': './syllabus/cse-sem3-data-structure-and-algorithms.pdf',
+    'CSE__3__Digital Electronics': './syllabus/cse-sem3-digital-electronics.pdf',
+    'CSE__3__Discrete Mathematics and Graph Theory': './syllabus/cse-sem3-discrete-mathematics-graph-theory.pdf',
+    'CSE__3__Object Oriented Programming (Java)': './syllabus/cse-sem3-object-oriented-programming.pdf',
+    'CSE__3__Operating System': './syllabus/cse-sem3-operating-system.pdf',
+    // CSE — Semester 4 — official BEU syllabus (session 2024 onwards)
+    'CSE__4__Computer Organization and Architecture': './syllabus/cse-sem4-computer-organization-and-architecture.pdf',
+    'CSE__4__Formal Language and Automata Theory': './syllabus/cse-sem4-formal-language-and-automata-theory.pdf',
+    'CSE__4__Design and Analysis of Algorithms': './syllabus/cse-sem4-design-and-analysis-of-algorithms.pdf',
+    'CSE__4__Database Management Systems': './syllabus/cse-sem4-database-management-systems.pdf',
+    'CSE__4__Effective Technical Communication': './syllabus/cse-sem4-effective-technical-communication.pdf',
+    'CSE__4__Computer Networks': './syllabus/cse-sem4-computer-networks.pdf',
+    // Semester 1 & 2 -- official BEU 'Group B' syllabus (session 2024-2025),
+    // common first-year subjects, same document for every branch.
+    // CSE
+    'CSE__1__Basic Electronics Engineering': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE__1__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE__1__Engineering Mathematics I': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE__1__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE__1__English': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE__1__IT Workshop': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE__1__Programming for Problem Solving': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE__2__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE__2__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    // IT
+    'IT__1__Basic Electronics Engineering': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'IT__1__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'IT__1__Engineering Mathematics I': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'IT__1__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'IT__1__English': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'IT__1__IT Workshop': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'IT__1__Programming for Problem Solving': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'IT__2__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'IT__2__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    // ECE
+    'ECE__1__Basic Electronics Engineering': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ECE__1__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ECE__1__Engineering Mathematics I': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ECE__1__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ECE__1__English': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ECE__1__IT Workshop': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ECE__1__Programming for Problem Solving': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ECE__2__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ECE__2__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    // EE
+    'EE__1__Basic Electronics Engineering': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'EE__1__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'EE__1__Engineering Mathematics I': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'EE__1__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'EE__1__English': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'EE__1__IT Workshop': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'EE__1__Programming for Problem Solving': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'EE__2__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'EE__2__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    // ME
+    'ME__1__Basic Electronics Engineering': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ME__1__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ME__1__Engineering Mathematics I': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ME__1__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ME__1__English': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ME__1__IT Workshop': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ME__1__Programming for Problem Solving': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ME__2__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'ME__2__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    // CE
+    'CE__1__Basic Electronics Engineering': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CE__1__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CE__1__Engineering Mathematics I': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CE__1__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CE__1__English': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CE__1__IT Workshop': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CE__1__Programming for Problem Solving': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CE__2__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CE__2__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    // CSE (AI & ML)
+    'CSE (AI & ML)__1__Basic Electronics Engineering': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (AI & ML)__1__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (AI & ML)__1__Engineering Mathematics I': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (AI & ML)__1__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (AI & ML)__1__English': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (AI & ML)__1__IT Workshop': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (AI & ML)__1__Programming for Problem Solving': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (AI & ML)__2__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (AI & ML)__2__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    // CSE (Data Science)
+    'CSE (Data Science)__1__Basic Electronics Engineering': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (Data Science)__1__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (Data Science)__1__Engineering Mathematics I': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (Data Science)__1__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (Data Science)__1__English': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (Data Science)__1__IT Workshop': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (Data Science)__1__Programming for Problem Solving': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (Data Science)__2__Chemistry': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+    'CSE (Data Science)__2__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
+  },
   notes: {
     // CSE — Semester 3 — admin-curated notes
     'CSE__3__Data Structure and Algorithms': './notes/cse-sem3-data-structure-and-algorithms.pdf',
@@ -1641,4 +1757,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // hero AI button opens the chat
   const heroAI = document.getElementById('heroAIBtn');
   if(heroAI) heroAI.addEventListener('click', ()=> AIChat.toggle(true));
+
+  // quick links AI button (same action as hero AI button)
+  const qlinkAI = document.getElementById('qlinkAIBtn');
+  if(qlinkAI) qlinkAI.addEventListener('click', ()=> AIChat.toggle(true));
 });
