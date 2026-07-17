@@ -132,40 +132,40 @@ function subjectsFor(sem, branch){
 const BRANCH_SUBJECTS = {
   CSE: {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
-    2: ['Chemistry', 'Engineering Physics'],
+    2: ['Chemistry', 'Engineering Mathematics II', 'Engineering Physics', 'Python Programming', 'Web Design'],
     3: ['Data Structure and Algorithms', 'Digital Electronics', 'Discrete Mathematics and Graph Theory', 'Object Oriented Programming (Java)', 'Operating System'],
     4: ['Computer Organization and Architecture', 'Computer Networks', 'Database Management Systems', 'Design and Analysis of Algorithms', 'Effective Technical Communication', 'Formal Language and Automata Theory']
   },
   ECE: {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
-    2: ['Chemistry', 'Engineering Physics'],
+    2: ['Chemistry', 'Engineering Mathematics II', 'Engineering Physics', 'Python Programming', 'Web Design'],
     3: ['Analog Electronic Circuits', 'Data Structure and Algorithms', 'Digital Electronics', 'Electrical Circuit Analysis', 'Electromagnetic Fields', 'Engineering Mathematics III', 'Engineering Mechanics', 'Object Oriented Programming (C++)', 'Technical Writing']
   },
   ME: {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
-    2: ['Chemistry', 'Engineering Physics'],
+    2: ['Chemistry', 'Engineering Mathematics II', 'Engineering Physics', 'Python Programming', 'Web Design'],
     3: ['Analog Electronic Circuits', 'Basic Electronics Engineering', 'Digital Electronics', 'Discrete Mathematics and Graph Theory', 'Electrical Circuit Analysis', 'Electromagnetic Fields', 'Engineering Mathematics III', 'Engineering Mechanics']
   },
   CE: {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
-    2: ['Chemistry', 'Engineering Physics'],
+    2: ['Chemistry', 'Engineering Mathematics II', 'Engineering Physics', 'Python Programming', 'Web Design'],
     3: ['Computer-Aided Civil Engineering Drawing', 'Introduction to Civil Engineering', 'Surveying and Geomatics']
   },
   IT: {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
-    2: ['Chemistry', 'Engineering Physics']
+    2: ['Chemistry', 'Engineering Mathematics II', 'Engineering Physics', 'Python Programming', 'Web Design']
   },
   EE: {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
-    2: ['Chemistry', 'Engineering Physics']
+    2: ['Chemistry', 'Engineering Mathematics II', 'Engineering Physics', 'Python Programming', 'Web Design']
   },
   'CSE (AI & ML)': {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
-    2: ['Chemistry', 'Engineering Physics']
+    2: ['Chemistry', 'Engineering Mathematics II', 'Engineering Physics', 'Python Programming', 'Web Design']
   },
   'CSE (Data Science)': {
     1: ['Basic Electronics Engineering', 'Chemistry', 'Engineering Mathematics I', 'Engineering Physics', 'English', 'IT Workshop', 'Programming for Problem Solving'],
-    2: ['Chemistry', 'Engineering Physics']
+    2: ['Chemistry', 'Engineering Mathematics II', 'Engineering Physics', 'Python Programming', 'Web Design']
   }
 };
 
@@ -347,6 +347,87 @@ const RESOURCE_FILES = {
     'CSE (Data Science)__2__Engineering Physics': './syllabus/btech-group-b-sem1-2-syllabus.pdf',
   },
   notes: {
+    // Semester 1 & 2 -- common first-year notes, same document for every branch
+    'CSE__1__Basic Electronics Engineering': './notes/btech-sem1-basic-electronics-engineering.pdf',
+    'CSE__1__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'CSE__1__Engineering Mathematics I': './notes/btech-sem1-engineering-mathematics-i.pdf',
+    'CSE__1__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'CSE__1__Programming for Problem Solving': './notes/btech-sem1-programming-for-problem-solving.pdf',
+    'CSE__2__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'CSE__2__Engineering Mathematics II': './notes/btech-sem2-engineering-mathematics-ii.pdf',
+    'CSE__2__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'CSE__2__Python Programming': './notes/btech-sem2-python-programming.pdf',
+    'CSE__2__Web Design': './notes/btech-sem2-web-design.pdf',
+    'IT__1__Basic Electronics Engineering': './notes/btech-sem1-basic-electronics-engineering.pdf',
+    'IT__1__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'IT__1__Engineering Mathematics I': './notes/btech-sem1-engineering-mathematics-i.pdf',
+    'IT__1__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'IT__1__Programming for Problem Solving': './notes/btech-sem1-programming-for-problem-solving.pdf',
+    'IT__2__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'IT__2__Engineering Mathematics II': './notes/btech-sem2-engineering-mathematics-ii.pdf',
+    'IT__2__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'IT__2__Python Programming': './notes/btech-sem2-python-programming.pdf',
+    'IT__2__Web Design': './notes/btech-sem2-web-design.pdf',
+    'ECE__1__Basic Electronics Engineering': './notes/btech-sem1-basic-electronics-engineering.pdf',
+    'ECE__1__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'ECE__1__Engineering Mathematics I': './notes/btech-sem1-engineering-mathematics-i.pdf',
+    'ECE__1__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'ECE__1__Programming for Problem Solving': './notes/btech-sem1-programming-for-problem-solving.pdf',
+    'ECE__2__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'ECE__2__Engineering Mathematics II': './notes/btech-sem2-engineering-mathematics-ii.pdf',
+    'ECE__2__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'ECE__2__Python Programming': './notes/btech-sem2-python-programming.pdf',
+    'ECE__2__Web Design': './notes/btech-sem2-web-design.pdf',
+    'EE__1__Basic Electronics Engineering': './notes/btech-sem1-basic-electronics-engineering.pdf',
+    'EE__1__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'EE__1__Engineering Mathematics I': './notes/btech-sem1-engineering-mathematics-i.pdf',
+    'EE__1__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'EE__1__Programming for Problem Solving': './notes/btech-sem1-programming-for-problem-solving.pdf',
+    'EE__2__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'EE__2__Engineering Mathematics II': './notes/btech-sem2-engineering-mathematics-ii.pdf',
+    'EE__2__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'EE__2__Python Programming': './notes/btech-sem2-python-programming.pdf',
+    'EE__2__Web Design': './notes/btech-sem2-web-design.pdf',
+    'ME__1__Basic Electronics Engineering': './notes/btech-sem1-basic-electronics-engineering.pdf',
+    'ME__1__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'ME__1__Engineering Mathematics I': './notes/btech-sem1-engineering-mathematics-i.pdf',
+    'ME__1__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'ME__1__Programming for Problem Solving': './notes/btech-sem1-programming-for-problem-solving.pdf',
+    'ME__2__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'ME__2__Engineering Mathematics II': './notes/btech-sem2-engineering-mathematics-ii.pdf',
+    'ME__2__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'ME__2__Python Programming': './notes/btech-sem2-python-programming.pdf',
+    'ME__2__Web Design': './notes/btech-sem2-web-design.pdf',
+    'CE__1__Basic Electronics Engineering': './notes/btech-sem1-basic-electronics-engineering.pdf',
+    'CE__1__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'CE__1__Engineering Mathematics I': './notes/btech-sem1-engineering-mathematics-i.pdf',
+    'CE__1__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'CE__1__Programming for Problem Solving': './notes/btech-sem1-programming-for-problem-solving.pdf',
+    'CE__2__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'CE__2__Engineering Mathematics II': './notes/btech-sem2-engineering-mathematics-ii.pdf',
+    'CE__2__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'CE__2__Python Programming': './notes/btech-sem2-python-programming.pdf',
+    'CE__2__Web Design': './notes/btech-sem2-web-design.pdf',
+    'CSE (AI & ML)__1__Basic Electronics Engineering': './notes/btech-sem1-basic-electronics-engineering.pdf',
+    'CSE (AI & ML)__1__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'CSE (AI & ML)__1__Engineering Mathematics I': './notes/btech-sem1-engineering-mathematics-i.pdf',
+    'CSE (AI & ML)__1__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'CSE (AI & ML)__1__Programming for Problem Solving': './notes/btech-sem1-programming-for-problem-solving.pdf',
+    'CSE (AI & ML)__2__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'CSE (AI & ML)__2__Engineering Mathematics II': './notes/btech-sem2-engineering-mathematics-ii.pdf',
+    'CSE (AI & ML)__2__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'CSE (AI & ML)__2__Python Programming': './notes/btech-sem2-python-programming.pdf',
+    'CSE (AI & ML)__2__Web Design': './notes/btech-sem2-web-design.pdf',
+    'CSE (Data Science)__1__Basic Electronics Engineering': './notes/btech-sem1-basic-electronics-engineering.pdf',
+    'CSE (Data Science)__1__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'CSE (Data Science)__1__Engineering Mathematics I': './notes/btech-sem1-engineering-mathematics-i.pdf',
+    'CSE (Data Science)__1__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'CSE (Data Science)__1__Programming for Problem Solving': './notes/btech-sem1-programming-for-problem-solving.pdf',
+    'CSE (Data Science)__2__Chemistry': './notes/btech-sem1-2-chemistry.pdf',
+    'CSE (Data Science)__2__Engineering Mathematics II': './notes/btech-sem2-engineering-mathematics-ii.pdf',
+    'CSE (Data Science)__2__Engineering Physics': './notes/btech-sem1-2-engineering-physics.pdf',
+    'CSE (Data Science)__2__Python Programming': './notes/btech-sem2-python-programming.pdf',
+    'CSE (Data Science)__2__Web Design': './notes/btech-sem2-web-design.pdf',
     // CSE — Semester 3 — admin-curated notes
     'CSE__3__Data Structure and Algorithms': './notes/cse-sem3-data-structure-and-algorithms.pdf',
     'CSE__3__Digital Electronics': './notes/cse-sem3-digital-electronics.pdf',
@@ -360,7 +441,17 @@ const RESOURCE_FILES = {
     'CSE__4__Database Management Systems': './notes/cse-sem4-database-management-systems.pdf',
     'CSE__4__Formal Language and Automata Theory': './notes/cse-sem4-formal-language-and-automata-theory.pdf'
   },
-  lab: {},
+  lab: {
+    // Semester 1 -- IT Workshop lab manual, same document for every branch
+    'CSE__1__IT Workshop': './lab/btech-sem1-it-workshop-lab-manual.pdf',
+    'IT__1__IT Workshop': './lab/btech-sem1-it-workshop-lab-manual.pdf',
+    'ECE__1__IT Workshop': './lab/btech-sem1-it-workshop-lab-manual.pdf',
+    'EE__1__IT Workshop': './lab/btech-sem1-it-workshop-lab-manual.pdf',
+    'ME__1__IT Workshop': './lab/btech-sem1-it-workshop-lab-manual.pdf',
+    'CE__1__IT Workshop': './lab/btech-sem1-it-workshop-lab-manual.pdf',
+    'CSE (AI & ML)__1__IT Workshop': './lab/btech-sem1-it-workshop-lab-manual.pdf',
+    'CSE (Data Science)__1__IT Workshop': './lab/btech-sem1-it-workshop-lab-manual.pdf'
+  },
   practical: {},
   books: {}
 };
