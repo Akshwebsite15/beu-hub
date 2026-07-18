@@ -2,12 +2,13 @@
    Caches the app shell so core navigation & saved data (attendance,
    CGPA, timetable) work offline. Tool CDNs still need internet. */
 
-const CACHE_NAME = 'beu-hub-v9';
+const CACHE_NAME = 'beu-hub-v11';
 const SHELL_FILES = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './firebase-config.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'

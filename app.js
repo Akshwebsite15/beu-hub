@@ -518,14 +518,807 @@ const PROF_RATING_CATEGORIES = [
 const PROF_BANNED_WORDS = ['bastard','bitch','slut','whore','chutiya','madarchod','behenchod','bhosdi','randi','harami'];
 
 /* Unit-by-unit topic checklists for the "Mark as Done" syllabus tracker.
-   Sourced directly from the official BEU Group-B Sem 1 & 2 syllabus PDF
-   already in this project (syllabus/btech-group-b-sem1-2-syllabus.pdf),
-   parsed programmatically into individual topics. Covers the 9 subjects
-   common to every branch in Semester 1 & 2. Semester 3/4 aren't included
-   yet — the only source available for those was compressed phone photos
-   whose text quality wasn't reliable enough to parse accurately; re-upload
-   clearer photos or a PDF and this can be extended the same way. */
+   Semester 1 & 2 entries sourced from the official BEU Group-B syllabus PDF
+   (syllabus/btech-group-b-sem1-2-syllabus.pdf); Semester 3 & 4 (CSE) entries
+   sourced from the syllabus photos, OCR'd with image preprocessing
+   (grayscale + upscale + contrast) for much cleaner text extraction.
+   All parsed programmatically into individual topics. */
 const SYLLABUS_TOPICS = {
+  "Data Structure and Algorithms": [
+    {
+      "unit": "Unit 1: Introduction",
+      "topics": [
+        "Introduction: Basic Terminologies: Elementary Data Organizations, Data Structure Operations: insertion, deletion, traversal etc",
+        "Analysis of an Algorithm",
+        "Asymptotic Notations",
+        "Time-Space trade off"
+      ]
+    },
+    {
+      "unit": "Unit 2: Stacks and Queues",
+      "topics": [
+        "Stacks and Queues: ADT Stack and its operations: Algorithms and _ their complexity analysis",
+        "Applications of Stacks: Expression Conversion and evaluation \u2014 corresponding algorithms and complexity analysis. ADT queue",
+        "Types of Queue: Simple Queue, Circular Queue, Priority Queue",
+        "Operations on each Type of Queues: Algorithms and their analysis"
+      ]
+    },
+    {
+      "unit": "Unit 3: Linked Lists",
+      "topics": [
+        "Linked Lists: Singly linked lists: Representation in memory, Algorithms of several operations: Traversing, Searching, Insertion into, Deletion from linked list",
+        "Linked representation of Stack and Queue",
+        "Header nodes",
+        "doubly linked list: operations on it and algorithmic analysis",
+        "Circular Linked Lists: all operations their algorithms and the complexity analysis"
+      ]
+    },
+    {
+      "unit": "Unit 4: Searching, Sorting and Hashing",
+      "topics": [
+        "Searching",
+        "Sorting and Hashing: Linear Search and Binary Search Techniques and their complexity analysis. Objective and properties of different sorting algorithms: Selection Sort",
+        "Bubble Sort",
+        "Insertion Sort",
+        "Quick Sort",
+        "Merge Sort",
+        "Heap Sort",
+        "Performance and Comparison among all the methods",
+        "Hashing"
+      ]
+    },
+    {
+      "unit": "Unit 5: Trees",
+      "topics": [
+        "Trees: Basic Tree Terminologies, Different types of Trees: Binary Tree, Threaded Binary Tree, Binary Search Tree, AVL Tree",
+        "Tree operations on each of the trees and their algorithms with complexity analysis. Applications of Binary Trees. B Tree",
+        "B+ Tree: definitions, algorithms and analysis"
+      ]
+    },
+    {
+      "unit": "Unit 6: Graph",
+      "topics": [
+        "Graph: Basic Terminologies and Representations",
+        "Graph search and traversal algorithms and complexity analysis"
+      ]
+    }
+  ],
+  "Digital Electronics": [
+    {
+      "unit": "Unit 1: Fundamentals of Digital Systems and Logic Families",
+      "topics": [
+        "Fundamentals of Digital Systems and logic families: Digital signals, digital circuits, AND, OR, NOT, NAND, NOR and Exclusive-OR operations",
+        "Boolean algebra",
+        "examples of IC gates",
+        "number systems-binary",
+        "signed binary",
+        "octal hexadecimal number",
+        "binary arithmetic",
+        "one\u2019s and two\u2019s complements arithmetic",
+        "codes",
+        "error detecting and correcting codes",
+        "characteristics of digital ICs",
+        "digital logic families",
+        "TTL",
+        "Schottky",
+        "TTL and CMOS logic",
+        "interfacing CMOS and TTL",
+        "Tri-state logic"
+      ]
+    },
+    {
+      "unit": "Unit 2: Combinational Digital Circuits",
+      "topics": [
+        "Combinational Digital Circuits: Standard representation for logic functions K- map representation, simplification of logic functions using K-map, minimization of logical functions. Don\u2019t care conditions, Multiplexer, DeMultiplexer/Decoders, Adders, Subtractors, BCD arithmetic, carry look ahead adder, serial adder, ALU. elementary ALU design, popular MSI chips, digital comparator, parity checker/generator, code conyerters, priority encoders, decoders/drivers for display devices, Q-M method of function realization"
+      ]
+    },
+    {
+      "unit": "Unit 3: Sequential circuits and systems",
+      "topics": [
+        "Sequential circuits and systems: A 1-bit memory, the circuit properties of Bistable latch, the clocked SR flip flop, J- K-T and D types flip flops",
+        "applications of flip flops",
+        "shift registers",
+        "applications of shift registers",
+        "serial to parallel converter",
+        "parallel to serial converter",
+        "ring counter",
+        "sequence generator",
+        "ripple (Asynchronous) counters",
+        "synchronous counters",
+        "counters design using flip flops",
+        "special counter ICs",
+        "asynchronous sequential counters",
+        "applications of counters"
+      ]
+    },
+    {
+      "unit": "Unit 4: A/D and D/A Converters",
+      "topics": [
+        "A/D and D/A Converters: Digital to analog converters: weighted resistor/conyerter, R- 2RLadder D/A converter, specifications for D/A converters, examples of D/A converter ICs, sample and hold circuit",
+        "analog to digital converters: quantization and encoding",
+        "parallel comparator A/D converter",
+        "successive approximation A/D converter",
+        "counting A/D converter",
+        "dual slope A/D converter",
+        "A/D converter using Voltage to frequency and yoltage to time conversion",
+        "specifications of A/D converters",
+        "example of A/D converter ICs"
+      ]
+    },
+    {
+      "unit": "Unit 5: Semiconductor memories",
+      "topics": [
+        "Semiconductor memories: Memory organization and operation",
+        "expanding memory size",
+        "classification and characteristics of memories",
+        "sequential memory",
+        "read only memory (ROM)",
+        "read and write memory(RAM)",
+        "content addressable memory (CAM)",
+        "charge de coupled device memory (CCD)",
+        "commonly used memory chips",
+        "ROM as a PLD"
+      ]
+    },
+    {
+      "unit": "Unit 6: Programmable logic devices",
+      "topics": [
+        "Programmable logic array",
+        "Programmable array logic",
+        "complex Programmable logic devices (CPLDS)",
+        "Field Programmable Gate Array (FPGA)"
+      ]
+    }
+  ],
+  "Object Oriented Programming (Java)": [
+    {
+      "unit": "Unit 1: OOP Concepts and Java Programming:",
+      "topics": [
+        "Introduction to Java: History of java, Java buzzwords, basics of Java programming, difference between procedural and object-oriented programming paradigm",
+        "need for OOPs paradigm",
+        "OOPs features",
+        "advantages of oops",
+        "JDK",
+        "JRE and JVM",
+        "data types",
+        "variables",
+        "operators",
+        "control structures including selection",
+        "looping",
+        "java methods",
+        "compilation",
+        "and execution of simple program"
+      ]
+    },
+    {
+      "unit": "Unit 2: Objects, Classes, and Constructors in Java:",
+      "topics": [
+        "Objects and Classes: Basics of objects and classes in java",
+        "declaring objects. new keyword",
+        "Defining and calling methods in class. Array of Objects. Constructors",
+        "Different types of Constructors",
+        "Overloading Methods and Constructors",
+        "Method Binding",
+        "Overtiding and Exceptions",
+        "Passing Object as parameters",
+        "returning object",
+        "Static members",
+        "Concept of Access Modifiers (Public",
+        "Private",
+        "Protected",
+        "Default)",
+        "this Keyword",
+        "gurbage Collection",
+        "finalize() method",
+        "Nested and Inner Classes",
+        "Exploring string class"
+      ]
+    },
+    {
+      "unit": "Unit 3: Inheritance, Interfaces and Packages:",
+      "topics": [
+        "Inheritance: Inheritance hierarchies, Benefits of Inheritance, super and subclasses",
+        "member access rules",
+        "super keyword",
+        "preventing inheritance: final classes and methods",
+        "the object class and its methods",
+        "Polymorphism: Dynamic binding, method overriding, abstract classes and methods",
+        "Interface: Interfaces vs Abstract classes, defining an interface, implement interfaces, accessing implementations through interface references, extending interface",
+        "Packages: Defining, creating and accessing a package",
+        "understanding CLASSPATH",
+        "importing packages"
+      ]
+    },
+    {
+      "unit": "Unit 4: Exception Handling:",
+      "topics": [
+        "Introduction to error and exception",
+        "Error ys Exception",
+        "Concepts of Exception Handling",
+        "Benefits of exception handling",
+        "exception types",
+        "exception hierarchy",
+        "checked and unchecked exceptions",
+        "usage of try",
+        "catch",
+        "throw",
+        "throws and finally",
+        "multiple catch clauses",
+        "nested try statements",
+        "re throwing exceptions",
+        "creating own exception sub classes"
+      ]
+    },
+    {
+      "unit": "Unit 5: Introduction to Multithreading:",
+      "topics": [
+        "Differences between multiple processes and multiple threads",
+        "thread states",
+        "creating threads",
+        "interrupting threads",
+        "thread priorities",
+        "synchronizing threads",
+        "inter thread communication"
+      ]
+    },
+    {
+      "unit": "Unit 6: Files, Collections Framework and Database Connectivity",
+      "topics": [
+        "Files",
+        "The Collections Framework and Connecting To Database: Files: Streams, byte streams, character stream, text inpuoutput, binary input/output, random access file operations, file management using file class",
+        "The Collections Framework Gava.util): Collections overview, Hierarchy of Collection Framework, Collection Interfaces, The Collection classes- Array List, Linked List, Hash Set, Tree Set, Priority Queue, Array Deque: Connecting to Database: Connecting to a database, querying a database and processing the results",
+        "updating data with JDBC"
+      ]
+    }
+  ],
+  "Operating System": [
+    {
+      "unit": "Unit 1: Introduction",
+      "topics": [
+        "Introduction: Concept of Operating Systems, Generations of Operating systems, Types of Operating Systems, OS Services, System Calls, Structure of an OS- Layered, Monolithic, Microkernel Operating Systems, Concept of Virtual Machine. Case study on UNIX and WINDOWS Operating System"
+      ]
+    },
+    {
+      "unit": "Unit 2: Processes",
+      "topics": [
+        "Processes: Definition, Process Relationship, Different states of a Process, Process State transitions, Process Control Block (PCB), Context switching. Thread: Definition, Various states, Benefits of threads, Types of threads, Concept of multithreads Process Scheduling",
+        "Foundation and Scheduling objectives",
+        "Types of Schedulers",
+        "Scheduling criteria: CPU utilization, Throughput, Turnaround Time, Waiting Time, Response Time",
+        "Scheduling algorithms: Pre-emptive and Non pre-emptive",
+        "FCFS",
+        "SJF",
+        "RR",
+        "Multiprocessor scheduling: Real Time scheduling: RM and EDF"
+      ]
+    },
+    {
+      "unit": "Unit 3: Inter-process Communication",
+      "topics": [
+        "Inter-process Communication: Critical Section, Race Conditions, Mutual Exclusion, Hardware Solution, Strict Alternation, Peterson\u2019s Solution, The Producer-Consumer Problem, Semaphores, Event Counters, Monitors, Message Passing, Shared Memory, Classical IPC Problems: Reader\u2019s & Writer Problem, Dinning Philosopher Problem etc"
+      ]
+    },
+    {
+      "unit": "Unit 4: Deadlocks",
+      "topics": [
+        "Deadlocks: Definition, Necessary and sufficient conditions for Deadlock",
+        "Deadlock Prevention",
+        "and Deadlock Avoidance: Banker\u2019s algorithm, Deadlock detection and Recovery"
+      ]
+    },
+    {
+      "unit": "Unit 5: Memory Management",
+      "topics": [
+        "Memory Management: Basic concept, Logical and Physical address map",
+        "Memory allocation: Contiguous Memory allocation -\u2014 Fixed and variable partition\u2014Internal and External fragmentation and Compaction",
+        "Paging and Segmentation: Principle of operation \u2014 Page allocation \u2014 Hardware support for paging, Protection and sharing",
+        "Advantages and Disadvantages of paging and segmentation. Virtual Memory: Basics of Virtual Memory \u2014 Hardware and control structures \u2014 Locality of reference",
+        "Page fault",
+        "Working Set",
+        "Dirty page/Dirty bit-Demand paging",
+        "Page Replacement algorithms: Optimal, First in First Out (FIFO), Second Chance (SC), Not recently used (NRU) and Least Recently used (LRU)"
+      ]
+    },
+    {
+      "unit": "Unit 6: File Management",
+      "topics": [
+        "File Management: Concept of File, Access methods, File types, File operation, Directory structure, File System structure, Allocation methods (contiguous, linked, indexed), Free- space management (bit vector, linked list, grouping), directory implementation (linear list, hash table), efficiency and performance. Disk Management: Disk structure",
+        "Disk scheduling-FCFS",
+        "SSTF",
+        "SCAN",
+        "C- SCAN",
+        "Disk reliability",
+        "Disk formatting",
+        "Boot-block",
+        "Bad blocks VO Hardware: I/O devices, Device controllers, Direct memory access, Principles 9 | \u2014\u2014\u2014\u2014\u2014\u2014\u2014 of I/O Software: Goals of Interrupt handlers, Device drivers, Device independent I/O software, Secondary-Storage Structure"
+      ]
+    }
+  ],
+  "Discrete Mathematics and Graph Theory": [
+    {
+      "unit": "Unit 1: Sets, Relation and Function",
+      "topics": [
+        "Sets",
+        "Relation and Function: Operations and Laws of Sets",
+        "Cartesian Products",
+        "Binary Relation",
+        "Partial Ordering Relation",
+        "Equivalence Relation",
+        "Image of a Set",
+        "Sum and Product of Functions",
+        "Bijective functions",
+        "Inverse and Composite Function",
+        "Size of a Set",
+        "Finite and infinite Sets",
+        "Countable and uncountable Sets",
+        "Cantor's diagonal argument and The Power Set theorem",
+        "Schroeder-Bernstein theorem"
+      ]
+    },
+    {
+      "unit": "Unit 2: Principles of Mathematical Induction",
+      "topics": [
+        "Principles of Mathematical Induction: The Well-Ordering Principle, Recursive definition, The Division algorithm: Prime Numbers, The Greatest Common Divisor: Euclidean Algorithm, The Fundamental Theorem of Arithmetic. Basic counting techniques-inclusion and exclusion",
+        "pigeon-hole principle",
+        "permutation and combination"
+      ]
+    },
+    {
+      "unit": "Unit 3: Propositional Logic",
+      "topics": [
+        "Propositional Logic: Syntax, Semantics, Validity and Satisfiability",
+        "Basic Connectives and Truth Tables",
+        "Logical Equivalence: The Laws of Logic, Logical Implication, Rules of Inference, The use of Quantifiers"
+      ]
+    },
+    {
+      "unit": "Unit 4: Proof Techniques",
+      "topics": [
+        "Proof Techniques: Some Terminology, Proof Methods and Strategies",
+        "Forward Proof",
+        "Proof by Contradiction",
+        "Proof by Contraposition",
+        "Proof of Necessity and Sufficiency"
+      ]
+    },
+    {
+      "unit": "Unit 5: Algebraic Structures and Morphism",
+      "topics": [
+        "Algebraic Structures and Morphism: Algebraic Structures with one Binary Operation, Semi Groups, Monoids, Groups, Congruence Relation and Quotient Structures",
+        "Free and Cyclic Monoids and Groups",
+        "Permutation Groups",
+        "Substructures",
+        "Normal Subgroups",
+        "Algebraic Structures with two Binary Operation",
+        "Rings",
+        "Integral Domain and Fields. Boolean Algebraand Boolean Ring",
+        "Identities of Boolean Algebra",
+        "Duality",
+        "Representation of Boolean Function",
+        "Disjunctive and Conjunctive Normal Form"
+      ]
+    },
+    {
+      "unit": "Unit 6: Graphs and Trees",
+      "topics": [
+        "Graphs and Trees: Graphs and their properties",
+        "Degree",
+        "Connectivity",
+        "Path",
+        "Cycle. Sub Graph",
+        "Isomorphism",
+        "Eulerian and Hamiltonian Walks",
+        "Graph Coloring",
+        "Coloring maps and Planar Graphs",
+        "Coloring Vertices",
+        "Coloring Edges",
+        "List Coloring",
+        "Perfect Graph",
+        "definition properties and Example",
+        "rooted trees",
+        "trees and sorting",
+        "weighted trees and prefix codes",
+        "Bi-connected component and Articulation Points",
+        "Shortest distances"
+      ]
+    }
+  ],
+  "Computer Organization and Architecture": [
+    {
+      "unit": "Unit 1: Functional blocks of a computer",
+      "topics": [
+        "Functional blocks of a computer: CPU, memory, input-output subsystems, control unit. Instruction set architecture of a CPU-registers, instruction execution cycle, RTL interpretation of instructions, addressing modes, instruction set. Case study \u2014 instruction sets of some common CPUs"
+      ]
+    },
+    {
+      "unit": "Unit 2: Data representation",
+      "topics": [
+        "Data representation: signed number representation, fixed and floating point representations",
+        "character representation. Computer arithmetic \u2014 integer addition and subtraction",
+        "ripple carry adder",
+        "carry look-ahead adder",
+        "etc. multiplication \u2014 shift-and-add",
+        "Booth multiplier",
+        "carry save multiplier",
+        "etc. Division restoring and non-restoring techniques",
+        "floating point arithmetic"
+      ]
+    },
+    {
+      "unit": "Unit 3: x86 Architecture and CPU Control Unit Design",
+      "topics": [
+        "Introduction to x86 architecture. CPU control unit design: hardwired and micro- programmed design approaches",
+        "Case study \u2014 design of a simple hypothetical CPU. Memory system design: semiconductor memory technologies, memory organization"
+      ]
+    },
+    {
+      "unit": "Unit 4: Peripheral Devices and I/O",
+      "topics": [
+        "Peripheral devices and their characteristics: Input-output subsystems, I/O device interface, I/O transfers\u2014program controlled, interrupt driven and DMA",
+        "privileged and non- privileged instructions",
+        "software interrupts and exceptions. Programs and processes-role of interrupts in process state transitions",
+        "I/O device interfaces \u2014 SCII",
+        "USB"
+      ]
+    },
+    {
+      "unit": "Unit 5: Pipelining",
+      "topics": [
+        "Pipelining: Basic concepts of pipelining, throughput and speedup",
+        "pipeline hazards. Parallel Processors: Introduction to parallel processors, Concurrent access to memory and cache coherency"
+      ]
+    },
+    {
+      "unit": "Unit 6: Memory organization",
+      "topics": [
+        "Memory organization: Memory interleaving, concept of hierarchical memory organization, cache memory, cache size vs. Block size, mapping functions, replacement algorithms, write policies"
+      ]
+    }
+  ],
+  "Formal Language and Automata Theory": [
+    {
+      "unit": "Unit 1: Introduction:",
+      "topics": [
+        "Alphabet",
+        "languages and grammars",
+        "productions and derivation",
+        "Chomsky hierarchy of languages"
+      ]
+    },
+    {
+      "unit": "Unit 2: Regular languages and finite automata",
+      "topics": [
+        "Regular expressions and languages",
+        "deterministic finite automata (DFA) and equivalence with regular expressions",
+        "nondeterministic finite automata (NFA) and equivalence with DFA",
+        "regular grammars and equivalence with finite automata",
+        "properties of regular languages",
+        "pumping lemma for regular languages",
+        "minimization of finite automata"
+      ]
+    },
+    {
+      "unit": "Unit 3: Context-free languages and pushdown automata:",
+      "topics": [
+        "Context-free grammars (CFG) and Context-free languages (CFL)",
+        "Chomsky and Greibach normal forms",
+        "nondeterministic pushdown automata (PDA) and equivalence with CFG",
+        "parse trees",
+        "ambiguity in CFG",
+        "pumping lemma for context-free languages",
+        "deterministic pushdown automata",
+        "closure properties of CFLs"
+      ]
+    },
+    {
+      "unit": "Unit 4: Context-sensitive languages:",
+      "topics": [
+        "Context-sensitive grammars (CSG) and Context-sensitive languages",
+        "linear bounded automata and equivalence with CSG"
+      ]
+    },
+    {
+      "unit": "Unit 5: Turing machines:",
+      "topics": [
+        "The basic model for Turing machines (TM)",
+        "Turing recognizable (Recursively enumerable) and Turing-decidable (recursive) languages and their closure properties",
+        "variants of Turing machines",
+        "nondeterministic TMs and equivalence with deterministic TMs",
+        "unrestricted grammars and equivalence with Turing machines",
+        "TMs as enumerators"
+      ]
+    },
+    {
+      "unit": "Unit 6: Undecidability:",
+      "topics": [
+        "Church-Turing thesis",
+        "universal Turing machine",
+        "the universal and diagonalization languages",
+        "reduction between languages and Rice\u2019s theorem",
+        "undecidable problems about languages"
+      ]
+    }
+  ],
+  "Design and Analysis of Algorithms": [
+    {
+      "unit": "Unit 1: Introduction",
+      "topics": [
+        "Introduction: Characteristics of algorithm. Analysis of algorithm: Asymptotic analysis of complexity bounds \u2014 best, average and worst-case behavior",
+        "Performance measurements of Algorithm",
+        "Time and space trade-offs",
+        "Analysis of recursive algorithms through recurrence relations: Substitution method, Recursion tree method and Masters\u2019 theorem"
+      ]
+    },
+    {
+      "unit": "Unit 2: Divide and Conquer Paradigm",
+      "topics": [
+        "Introduction to Divide and Conquer paradigm: Binary Search, Quick and Merge sorting techniques",
+        "linear time selection algorithm",
+        "Strassen\u2019s Matrix Multiplication",
+        "Karatsuba Algorithm for fast multiplication etc. Introduction to Heap: Min and Max Heap",
+        "Build Heap",
+        "Heap Sort"
+      ]
+    },
+    {
+      "unit": "Unit 3: Greedy Method",
+      "topics": [
+        "Overview of Brute-Force",
+        "GreedyProgramming",
+        "Dynamic Programming",
+        "Branch- and-Bound and Backtrackingmethodologies. Greedy paradigm examples of exact optimization solution: Minimum Cost Spanning Tree, Knapsack problem, Job Sequencing Problem, Huffman Coding, Single source shortest path problem"
+      ]
+    },
+    {
+      "unit": "Unit 4: Dynamic Programming",
+      "topics": [
+        "Dynamic Programming",
+        "difference between dynamic programming and divide and conquer",
+        "Applications: Fibonacci Series, Matrix Chain Multiplication, 0-1 Knapsack Problem, Longest Common Subsequence, Travelling Salesman Problem, Rod Cutting, Bin Packing. Heuristics \u2014 characteristics and their application domains"
+      ]
+    },
+    {
+      "unit": "Unit 5: Graph and Tree Algorithms",
+      "topics": [
+        "Graph and Tree Algorithms:Representational issues in graphs, Traversal algorithms: Depth First Search (DFS) and Breadth First Search (BFS)",
+        "Shortest path algorithms: Bellman- Ford algorithm, Dijkstra\u2019s algorithm & Analysis of Dijkstra\u2019s algorithm using heaps, Floyd-Warshall\u2019s all pairs shortest path algorithm.Transitive closure, Topological sorting, Network Flow Algorithm, Connected Component"
+      ]
+    },
+    {
+      "unit": "Unit 6: Tractable and Intractable Problems",
+      "topics": [
+        "Tractable and Intractable Problems: Computability of Algorithms, Computability classes \u2014 P, NP, NP-complete and NP-hard. Cook\u2019s theorem",
+        "Standard NP-complete problems and Reduction techniques.Approximation algorithms",
+        "Randomized algorithms"
+      ]
+    }
+  ],
+  "Database Management Systems": [
+    {
+      "unit": "Unit 1: Database system architecture",
+      "topics": [
+        "Data Abstraction",
+        "Data Independence",
+        "Data Definition Language (DDL)",
+        "Data Manipulation Language (DML). Data models: Entity-relationship model, network model, relational and object oriented data models",
+        "integrity constraints",
+        "data manipulation operations"
+      ]
+    },
+    {
+      "unit": "Unit 2: Relational query languages:",
+      "topics": [
+        "Relational algebra",
+        "Tuple and domain relational calculus",
+        "SQL3",
+        "DDL and DML constructs",
+        "Open source and Commercial DBMS-MYSQL",
+        "ORACLE",
+        "DB2",
+        "SQL server. Relational database design: Domain and data dependency",
+        "Armstrong\u2019s axioms",
+        "Normal forms",
+        "Dependency preservation",
+        "Lossless design. Query processing and optimization: Evaluation of relational algebra expressions, Query equivalence, Join strategies, Query optimization algorithms"
+      ]
+    },
+    {
+      "unit": "Unit 3: Storage strategies:",
+      "topics": [
+        "Indices",
+        "B-trees",
+        "hashing"
+      ]
+    },
+    {
+      "unit": "Unit 4: Transaction processing:",
+      "topics": [
+        "Concurrency control",
+        "ACID property",
+        "Serializability of scheduling",
+        "Locking and timestamp based schedulers",
+        "Multi-version and optimistic Concurrency Control schemes",
+        "Database recovery"
+      ]
+    },
+    {
+      "unit": "Unit 5: Database Security:",
+      "topics": [
+        "Authentication",
+        "Authorization and access control",
+        "DAC",
+        "MAC and RBAC models",
+        "Intrusion detection",
+        "SQL injection"
+      ]
+    },
+    {
+      "unit": "Unit 6: Advanced topics:",
+      "topics": [
+        "Object oriented and object relational databases",
+        "Logical databases",
+        "Web databases",
+        "Distributed databases",
+        "Data warehousing and data mining"
+      ]
+    }
+  ],
+  "Effective Technical Communication": [
+    {
+      "unit": "Unit 1: Information Design and Development",
+      "topics": [
+        "Different kinds of technical documents",
+        "Information development life cycle",
+        "Organization structures",
+        "factors affecting information and document design",
+        "Strategies for organization",
+        "Information design and writing for print and for online media"
+      ]
+    },
+    {
+      "unit": "Unit 2: Technical Writing, Grammar and Editing",
+      "topics": [
+        "Technical writing process",
+        "forms of discourse",
+        "Writing drafts and revising",
+        "Collaborative writing",
+        "creating indexes",
+        "technical writing style and language. Basics of grammar",
+        "study of advanced grammar",
+        "editing strategies to achieve appropriate technical style. Introduction to advanced technical communication",
+        "Usability",
+        "Human factors",
+        "Managing technical communication projects",
+        "time estimation",
+        "Single sourcing",
+        "Localization"
+      ]
+    },
+    {
+      "unit": "Unit 3: Self-development and Assessment",
+      "topics": [
+        "Self assessment",
+        "Awareness",
+        "Perception and Attitudes",
+        "Values and belief",
+        "Personal goal setting",
+        "career planning",
+        "Self-esteem. Managing Time: Personal memory, Rapid reading, taking notes",
+        "Complex problem solving",
+        "Creativity"
+      ]
+    },
+    {
+      "unit": "Unit 4: Communication",
+      "topics": [
+        "Public speaking",
+        "Group discussion",
+        "Oral",
+        "presentation",
+        "Interviews",
+        "Graphic presentation",
+        "Presentation aids",
+        "Personality Development"
+      ]
+    },
+    {
+      "unit": "Unit 5: Technical Writing",
+      "topics": [
+        "Writing reports",
+        "project proposals",
+        "brochures",
+        "newsletters",
+        "technical articles",
+        "manuals",
+        "official notes",
+        "business letters",
+        "memos",
+        "progress reports",
+        "minutes of meetings",
+        "event report"
+      ]
+    },
+    {
+      "unit": "Unit 6: Ethics",
+      "topics": [
+        "Business ethics",
+        "Etiquettes in social and office settings",
+        "Email etiquettes",
+        "Telephone Etiquettes",
+        "Engineering ethics",
+        "managing time",
+        "Role and responsibility of engineer",
+        "Work culture in jobs",
+        "Personal memo"
+      ]
+    }
+  ],
+  "Computer Networks": [
+    {
+      "unit": "Unit 1: Overview of Data Communication and Networking",
+      "topics": [
+        "Overview of Data Communication and Networking: OSI Reference Model, TCP/IP Protocol Suite",
+        "Network Architecture and Physical Topology"
+      ]
+    },
+    {
+      "unit": "Unit 2: Physical Layer",
+      "topics": [
+        "Physical Layer: Analog and Digital Signals",
+        "Transmission Impairment",
+        "Data Rate Limits",
+        "Performance Analysis of a Network",
+        "Representation and Synchronization of Bits",
+        "Analog and Digital Transmission",
+        "Multiplexing and Spreading Techniques",
+        "Guided Transmission Media",
+        "Circuit",
+        "Packet and Virtual Circuit Switching"
+      ]
+    },
+    {
+      "unit": "Unit 3: Data Link Layer",
+      "topics": [
+        "Data Link Layer: Framing, Flow and Error Control (Noiseless and Noisy Channels Protocols)",
+        "PointToPoint Protocol",
+        "Random Access protocols (Pure/slotted ALOHA",
+        "CSMA/CD",
+        "CSMA/CA)",
+        "Controlled Access Protocol (Bit-Map",
+        "Polling and Token Passing)",
+        "Channelization (TDMA",
+        "FDMA",
+        "CDMA)",
+        "Physical Addressing and Ethernet",
+        "Connecting LANs and Virtual LANs"
+      ]
+    },
+    {
+      "unit": "Unit 4: Network Layer",
+      "topics": [
+        "Network Layer: Internet Protocol version 4 and 6",
+        "Address Mapping (ARP",
+        "RARP",
+        "BOOTP and DHCP)",
+        "ICMP and IGMP",
+        "Routing Algorithms"
+      ]
+    },
+    {
+      "unit": "Unit 5: Transport Layer",
+      "topics": [
+        "Transport Layer: UDP, TCP",
+        "Congestion Control and QoS",
+        "Client-Server Model and Socket Interface"
+      ]
+    },
+    {
+      "unit": "Unit 6: Application Layer",
+      "topics": [
+        "Application Layer: DNS, Remote Logging, Electronic Mail (SMTP, POP), FTP, Introduction to WWW and HTTP"
+      ]
+    }
+  ],
   "Chemistry": [
     {
       "unit": "Unit 1: Atomic and Molecular Structure",
@@ -1955,14 +2748,48 @@ function renderReviews(){
   `).join('') || '<p class="muted">No reviews yet — be the first to share feedback!</p>';
 }
 
+/* ============================== DB (shared backend abstraction) ==============================
+   Used by Rate My Professor + Q&A Board. Transparently uses Firestore when
+   firebase-config.js has real keys filled in (shared across all students);
+   otherwise falls back to localStorage (this device only), so the site
+   always works even before a backend is set up. */
+const DB = {
+  async list(collectionName, localKey){
+    if(firebaseReady){
+      try{
+        const snap = await firestoreDB.collection(collectionName).orderBy('date', 'desc').get();
+        return snap.docs.map(d=> ({id: d.id, ...d.data()}));
+      }catch(err){
+        console.error(`[DB] Firestore read failed for ${collectionName}, falling back to local data:`, err);
+        return store.get(localKey, []).slice().reverse();
+      }
+    }
+    return store.get(localKey, []).slice().reverse();
+  },
+  async add(collectionName, localKey, obj){
+    if(firebaseReady){
+      try{
+        const ref = await firestoreDB.collection(collectionName).add(obj);
+        return {id: ref.id, ...obj};
+      }catch(err){
+        console.error(`[DB] Firestore write failed for ${collectionName}, saving locally instead:`, err);
+      }
+    }
+    const items = store.get(localKey, []);
+    const item = {id: 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2,7), ...obj};
+    items.push(item);
+    store.set(localKey, items);
+    return item;
+  }
+};
+
 /* ============================== RATE MY PROFESSOR ==============================
    Professors and ratings are 100% crowdsourced — students add professors and
-   rate them themselves; nothing is pre-filled. Everything below is stored in
-   localStorage on this device only (LS.professors / LS.profRatings). To make
-   ratings visible across every student's device, this would need to be wired
-   up to a shared backend (e.g. Firebase/Supabase) instead of localStorage. */
-function profAverages(profId){
-  const ratings = store.get(LS.profRatings, []).filter(r => r.profId === profId);
+   rate them themselves; nothing is pre-filled. Saved to Firestore (shared
+   across every student) once firebase-config.js is set up — see that file.
+   Until then, everything here runs on localStorage on this device only. */
+async function profAverages(profId){
+  const ratings = (await DB.list('profRatings', LS.profRatings)).filter(r => r.profId === profId);
   const out = {count: ratings.length};
   let overallSum = 0, overallN = 0;
   PROF_RATING_CATEGORIES.forEach(c=>{
@@ -1989,11 +2816,11 @@ function initProfessors(){
   $('#addProfBtn').addEventListener('click', openAddProfessorForm);
   renderProfessorList();
 }
-function renderProfessorList(){
+async function renderProfessorList(){
   const college = $('#profCollege').value;
   const dept = $('#profDept').value;
   const search = ($('#profSearch').value || '').trim().toLowerCase();
-  let all = store.get(LS.professors, []);
+  let all = await DB.list('professors', LS.professors);
   if(college) all = all.filter(p=> p.college === college);
   if(dept) all = all.filter(p=> p.dept === dept);
   if(search) all = all.filter(p=> p.name.toLowerCase().includes(search));
@@ -2010,8 +2837,8 @@ function renderProfessorList(){
     return;
   }
 
-  $('#profList').innerHTML = all.map(p=>{
-    const avg = profAverages(p.id);
+  const rows = await Promise.all(all.map(async p=>{
+    const avg = await profAverages(p.id);
     const stars = avg.count ? '★'.repeat(Math.round(avg.overall)) + '☆'.repeat(5-Math.round(avg.overall)) : '☆☆☆☆☆';
     return `
       <div class="card">
@@ -2021,7 +2848,8 @@ function renderProfessorList(){
         <button class="btn btn-ghost btn-sm prof-detail-btn" data-id="${p.id}">Rate & view reviews</button>
       </div>
     `;
-  }).join('');
+  }));
+  $('#profList').innerHTML = rows.join('');
   $$('.prof-detail-btn').forEach(b=> b.addEventListener('click', ()=> openProfessorDetail(b.dataset.id)));
 }
 function openAddProfessorForm(){
@@ -2044,30 +2872,28 @@ function openAddProfessorForm(){
     </form>
   `;
   openPanel(html, 'Add a Professor');
-  $('#addProfForm').addEventListener('submit', (e)=>{
+  $('#addProfForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const name = $('#apName').value.trim();
     const college = $('#apCollege').value;
     const dept = $('#apDept').value;
     if(!name){ toast("Enter the professor's name"); return; }
     if(containsBannedContent(name)){ toast('Please keep names respectful'); return; }
-    const all = store.get(LS.professors, []);
+    const all = await DB.list('professors', LS.professors);
     const exists = all.some(p=> p.name.toLowerCase()===name.toLowerCase() && p.college===college && p.dept===dept);
     if(exists){ toast('This professor is already listed — search for them instead'); return; }
-    const id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-    all.unshift({id, name, college, dept, addedAt:new Date().toISOString()});
-    store.set(LS.professors, all);
+    await DB.add('professors', LS.professors, {name, college, dept, date: new Date().toISOString()});
     closePanel();
     renderProfessorList();
     toast('Professor added — you can rate them now');
   });
 }
-function openProfessorDetail(profId){
-  const all = store.get(LS.professors, []);
+async function openProfessorDetail(profId){
+  const all = await DB.list('professors', LS.professors);
   const p = all.find(x=> x.id === profId);
   if(!p) return;
-  const avg = profAverages(profId);
-  const ratings = store.get(LS.profRatings, []).filter(r=> r.profId === profId).slice().reverse();
+  const avg = await profAverages(profId);
+  const ratings = (await DB.list('profRatings', LS.profRatings)).filter(r=> r.profId === profId);
 
   const catRows = PROF_RATING_CATEGORIES.map(c=>{
     const val = avg[c.key] || 0;
@@ -2123,7 +2949,7 @@ function openProfessorDetail(profId){
     });
   });
 
-  $('#rateProfForm').addEventListener('submit', (e)=>{
+  $('#rateProfForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const missing = PROF_RATING_CATEGORIES.filter(c=> !selected[c.key]);
     if(missing.length){ toast('Please rate: ' + missing.map(c=>c.label).join(', ')); return; }
@@ -2131,9 +2957,7 @@ function openProfessorDetail(profId){
     if(comment && containsBannedContent(comment)){ toast('Please keep your review respectful'); return; }
     const entry = {profId, date:new Date().toISOString(), comment};
     PROF_RATING_CATEGORIES.forEach(c=> entry[c.key] = selected[c.key]);
-    const allRatings = store.get(LS.profRatings, []);
-    allRatings.push(entry);
-    store.set(LS.profRatings, allRatings);
+    await DB.add('profRatings', LS.profRatings, entry);
     closePanel();
     renderProfessorList();
     toast('Thanks for rating! 🙌');
@@ -2142,9 +2966,9 @@ function openProfessorDetail(profId){
 
 /* ============================== QUESTION & ANSWER BOARD ==============================
    Admin (or anyone, since this static site has no login system) posts a question
-   tagged by branch/semester/subject; students answer it below. Everything is stored
-   in localStorage on this device only (LS.questions / LS.answers) — for answers to be
-   visible across every student's device this needs a shared backend instead. */
+   tagged by branch/semester/subject; students answer it below. Saved to Firestore
+   (shared across every student) once firebase-config.js is set up — see that file.
+   Until then, everything here runs on localStorage on this device only. */
 function initQA(){
   const branchSel = $('#qaBranch'), semSel = $('#qaSem');
   fillSelect(branchSel, BRANCHES); fillSelect(semSel, SEMESTERS);
@@ -2159,9 +2983,9 @@ function initQA(){
   $('#askQuestionBtn').addEventListener('click', openAskQuestionForm);
   renderQuestionList();
 }
-function renderQuestionList(){
+async function renderQuestionList(){
   const branch = $('#qaBranch').value, sem = $('#qaSem').value, subject = $('#qaSubject').value;
-  let all = store.get(LS.questions, []).slice().reverse();
+  let all = await DB.list('questions', LS.questions);
   if(branch) all = all.filter(q=> q.branch === branch);
   if(sem) all = all.filter(q=> q.sem === sem);
   if(subject && subject !== 'All') all = all.filter(q=> q.subject === subject);
@@ -2177,7 +3001,7 @@ function renderQuestionList(){
     return;
   }
 
-  const allAnswers = store.get(LS.answers, []);
+  const allAnswers = await DB.list('answers', LS.answers);
   $('#qaList').innerHTML = all.map(q=>{
     const count = allAnswers.filter(a=> a.questionId === q.id).length;
     return `
@@ -2216,28 +3040,24 @@ function openAskQuestionForm(){
   branchSel.addEventListener('change', refresh); semSel.addEventListener('change', refresh);
   refresh();
 
-  $('#askQForm').addEventListener('submit', (e)=>{
+  $('#askQForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const text = $('#aqText').value.trim();
     if(!text){ toast('Enter a question'); return; }
     if(containsBannedContent(text)){ toast('Please keep the question respectful'); return; }
-    const q = {
-      id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    await DB.add('questions', LS.questions, {
       branch: branchSel.value, sem: semSel.value, subject: subjSel.value,
       text, date: new Date().toISOString()
-    };
-    const all = store.get(LS.questions, []);
-    all.push(q);
-    store.set(LS.questions, all);
+    });
     closePanel();
     renderQuestionList();
     toast('Question posted');
   });
 }
-function openQuestionDetail(qId){
-  const q = store.get(LS.questions, []).find(x=> x.id === qId);
+async function openQuestionDetail(qId){
+  const q = (await DB.list('questions', LS.questions)).find(x=> x.id === qId);
   if(!q) return;
-  const answers = store.get(LS.answers, []).filter(a=> a.questionId === qId).slice().reverse();
+  const answers = (await DB.list('answers', LS.answers)).filter(a=> a.questionId === qId);
 
   const answersHtml = answers.length ? answers.map(a=>`
     <div class="card mt-8" style="padding:12px;">
@@ -2259,14 +3079,12 @@ function openQuestionDetail(qId){
   `;
   openPanel(html, 'Question');
 
-  $('#answerForm').addEventListener('submit', (e)=>{
+  $('#answerForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const text = $('#ansText').value.trim();
     if(!text){ toast('Write an answer first'); return; }
     if(containsBannedContent(text)){ toast('Please keep your answer respectful'); return; }
-    const all = store.get(LS.answers, []);
-    all.push({id:'a_'+Date.now(), questionId:qId, text, date:new Date().toISOString()});
-    store.set(LS.answers, all);
+    await DB.add('answers', LS.answers, {questionId:qId, text, date:new Date().toISOString()});
     openQuestionDetail(qId);
     renderQuestionList();
     toast('Answer submitted 🙌');
@@ -2291,7 +3109,9 @@ const AIChat = {
   },
   toggle(open){
     $('#aiChatWindow').classList.toggle('open', open);
-    $('#aiFab').style.display = open ? 'none' : 'flex';
+    const currentPage = document.querySelector('.page-section.active');
+    const onHome = currentPage && currentPage.id === 'home';
+    $('#aiFab').style.display = (open || onHome) ? 'none' : 'flex';
     if(open && !store.get(LS.aiEndpoint,'')) this.render();
   },
   updateStatusDot(){
@@ -3074,6 +3894,7 @@ function showPage(id, opts={}){
   $$('.page-section').forEach(p=> p.classList.remove('active'));
   target.classList.add('active');
   updateActiveNav(targetPageId);
+  updateAiFabVisibility(targetPageId);
 
   if(pushHash && location.hash.replace('#','') !== id){
     history.pushState(null, '', '#'+id);
@@ -3086,13 +3907,22 @@ function showPage(id, opts={}){
   }
 }
 
+/* The floating AI button is hidden on the homepage — the hero already has
+   its own "AI Doubts Solver" button and orbit icon, so the fixed FAB there
+   was redundant clutter. It still shows on every other page. */
+function updateAiFabVisibility(pageId){
+  const fab = document.getElementById('aiFab');
+  if(!fab) return;
+  fab.style.display = (pageId === 'home') ? 'none' : '';
+}
+
 /* Runs once on load: opens whichever page the URL hash points to (so a
    shared/bookmarked link like beuhub.example/#jobs opens straight into that
    page), otherwise defaults to Home. */
 function initialRoute(){
   const id = location.hash.replace('#','');
   if(id) showPage(id, {pushHash:false});
-  else updateActiveNav('home');
+  else { updateActiveNav('home'); updateAiFabVisibility('home'); }
 }
 
 /* ============================== INIT ============================== */
