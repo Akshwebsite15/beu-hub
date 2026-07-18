@@ -7,7 +7,9 @@
 const LS = {
   theme:'beu_theme', attendance:'beu_attendance', cgpa:'beu_cgpa',
   timetable:'beu_timetable', reviews:'beu_reviews', chat:'beu_ai_chat',
-  premium:'beu_premium', aiEndpoint:'beu_ai_endpoint'
+  premium:'beu_premium', aiEndpoint:'beu_ai_endpoint',
+  professors:'beu_professors', profRatings:'beu_prof_ratings', syllabusProgress:'beu_syllabus_progress',
+  questions:'beu_questions', answers:'beu_answers'
 };
 
 /* If you set APP_SHARED_SECRET on your Worker (see worker.js / AI-SETUP.md),
@@ -457,6 +459,865 @@ const RESOURCE_FILES = {
 };
 function fileKey(branch, sem, subject){ return `${branch}__${sem}__${subject}`; }
 
+/* 38 government engineering colleges affiliated to BEU. Compiled from the
+   official BCECE Board sanctioned-seats document (2019-20) cross-checked
+   against current college/BEU notices. Names/spellings may have been
+   updated since — if you spot one that's wrong or renamed, it can be
+   fixed here. */
+const BEU_COLLEGES = [
+  'Muzaffarpur Institute of Technology, Muzaffarpur',
+  'Bhagalpur College of Engineering, Bhagalpur',
+  'Darbhanga College of Engineering, Darbhanga',
+  'Gaya College of Engineering, Gaya',
+  'Nalanda College of Engineering, Chandi',
+  'Motihari College of Engineering, Motihari',
+  'Loknayak Jai Prakash Institute of Technology, Chapra',
+  'Rashtrakavi Ramdhari Singh Dinkar College of Engineering, Begusarai',
+  'Katihar Engineering College, Katihar',
+  'Purnea College of Engineering, Purnea',
+  'Supaul College of Engineering, Supaul',
+  'Sitamarhi Institute of Technology, Sitamarhi',
+  'Bakhtiyarpur College of Engineering, Patna',
+  'B.P. Mandal College of Engineering, Madhepura',
+  'Sershah Engineering College, Sasaram',
+  'Saharsa College of Engineering, Saharsa',
+  'Government Engineering College, Vaishali',
+  'Government Engineering College, Jamui',
+  'Government Engineering College, Banka',
+  'Government Engineering College, Nawada',
+  'Government Engineering College, Kishanganj',
+  'Government Engineering College, Araria',
+  'Government Engineering College, Munger',
+  'Government Engineering College, Sheohar',
+  'Government Engineering College, West Champaran',
+  'Government Engineering College, Aurangabad',
+  'Government Engineering College, Kaimur',
+  'Government Engineering College, Gopalganj',
+  'Government Engineering College, Madhubani',
+  'Government Engineering College, Siwan',
+  'Government Engineering College, Jehanabad',
+  'Government Engineering College, Arwal',
+  'Government Engineering College, Khagaria',
+  'Government Engineering College, Buxar',
+  'Government Engineering College, Bhojpur',
+  'Government Engineering College, Sheikhpura',
+  'Government Engineering College, Lakhisarai',
+  'Government Engineering College, Samastipur'
+];
+
+/* Rate My Professor — rating categories. Professors and ratings are entered
+   by students (crowdsourced), never pre-filled, and are stored in
+   localStorage on this device only (see LS.professors / LS.profRatings). */
+const PROF_RATING_CATEGORIES = [
+  {key:'teaching', label:'Teaching Style'},
+  {key:'viva', label:'Viva / Exam Behaviour'},
+  {key:'behaviour', label:'Approachability & Behaviour'},
+  {key:'doubt', label:'Doubt-Clearing'},
+  {key:'punctuality', label:'Punctuality'}
+];
+const PROF_BANNED_WORDS = ['bastard','bitch','slut','whore','chutiya','madarchod','behenchod','bhosdi','randi','harami'];
+
+/* Unit-by-unit topic checklists for the "Mark as Done" syllabus tracker.
+   Sourced directly from the official BEU Group-B Sem 1 & 2 syllabus PDF
+   already in this project (syllabus/btech-group-b-sem1-2-syllabus.pdf),
+   parsed programmatically into individual topics. Covers the 9 subjects
+   common to every branch in Semester 1 & 2. Semester 3/4 aren't included
+   yet — the only source available for those was compressed phone photos
+   whose text quality wasn't reliable enough to parse accurately; re-upload
+   clearer photos or a PDF and this can be extended the same way. */
+const SYLLABUS_TOPICS = {
+  "Chemistry": [
+    {
+      "unit": "Unit 1: Atomic and Molecular Structure",
+      "topics": [
+        "Electromagnetic ra diations",
+        "Dual nature of electron and Heisenberg uncertainty Principle. Photoelectric effect",
+        "Planck's theory. Principles for the combination of atomic orbitals to form a molecular diagram of molecular orbitals. Bent's rule",
+        "VSEPR theory (typical example) co-ordination numbers and geometries. Isomerism in transition metal compounds. Metal Carbonyls",
+        "Synthesis and Structure"
+      ]
+    },
+    {
+      "unit": "Unit 2: Spectroscopy",
+      "topics": [
+        "Principle of rotational and vibrational spectroscopy",
+        "selection rule for application in diatomic molecules",
+        "elementary idea of electronic spectroscopy",
+        "UV-VIS spectroscopy with related to rules and its applications. Basic Principle of nuclear Magnetic resonance spectroscopy with applications"
+      ]
+    },
+    {
+      "unit": "Unit 3: Electrochemistry and Fuels",
+      "topics": [
+        "Nernst equation",
+        "EMF and electroche mical cell",
+        "the introduction of corrosion",
+        "corrosion mechanism",
+        "types of corrosion",
+        "water line corrosion",
+        "stress corrosion",
+        "pitting corrosion",
+        "Lead acid storage cell",
+        "leclanche cell. Calorific value of fuels",
+        "proximate and ultimate analysis of coals",
+        "fuel cells",
+        "Bio fuels"
+      ]
+    },
+    {
+      "unit": "Unit 4: Water Chemistry",
+      "topics": [
+        "Hardness of water",
+        "estimation of water hardness by EDTA and Alkalinity method. Removal of the hardness of water-soda lime process",
+        "zeolite process",
+        "Ion exchange process",
+        "Boiler problem",
+        "sludge",
+        "and s cale formation",
+        "priming and foaming",
+        "Boiler corrosion",
+        "and Caustic embrittlement"
+      ]
+    },
+    {
+      "unit": "Unit 5: Polymer and Plastics",
+      "topics": [
+        "Polymerization techniques (free radical",
+        "ionic",
+        "and co-ordination mechanism)Preparation properties",
+        "and technical application of phenol-formaldehyde resins",
+        "elastomers",
+        "synthetic rubbers (Buna-S",
+        "Buna-N",
+        "neoprene). Inorganic polymers",
+        "Silicones",
+        "adhesives",
+        "epoxy resins. the structural difference between thermoplastic and thermosetting Plasti cs",
+        "the Importance of commercially important thermoplastics and thermosets",
+        "Poly ethylene",
+        "Polyvinyl chloride",
+        "Polystyrene"
+      ]
+    },
+    {
+      "unit": "Unit 6: Organic Reactions and Synthesis of A Drug Molecul",
+      "topics": [
+        "Introduction to intermediate and reaction involving Substitution",
+        "addition",
+        "elimination",
+        "oxidation-reduction. Diels Elder cyclization and epoxide ring opening reactions",
+        "synthesis of commonly used drug molecules like aspirin"
+      ]
+    }
+  ],
+  "Engineering Mathematics I": [
+    {
+      "unit": "Unit 1: Linear Algebra-I",
+      "topics": [
+        "Elementary Row operations",
+        "Gauss-Jordan Method for finding the inverse of Matrix",
+        "Complex Matrix: Hermitian, Skew Hermitian and Unitary Matrix",
+        "Vector space",
+        "Sub Spaces",
+        "Linear dependence and Independences of Vectors",
+        "Linear Span",
+        "Basis",
+        "Dimension",
+        "Extension of basis of subspace",
+        "The rank of a matrix",
+        "Row and column space",
+        "Solvability of system of linear equations"
+      ]
+    },
+    {
+      "unit": "Unit 2: Linear Algebra-II",
+      "topics": [
+        "Linear Transformations",
+        "Kernel and Range of linear transformation",
+        "Matrix Representation of a linear transformation",
+        "Rank-Nullity Theorem",
+        "Eigen Value and Eigen Vectors",
+        "Properties of Eigen vectors",
+        "Eigen Bases",
+        "Orthogonal Tr ansformation",
+        "Similarity Transformation",
+        "Matrix Diagonalization",
+        "Cayley- Hamilton Theorem"
+      ]
+    },
+    {
+      "unit": "Unit 3: Calculus for single variable",
+      "topics": [
+        "Inderminate form",
+        "L\u2019Hospital Rule",
+        "Rolle\u2019s Theorem",
+        "Mean Value Theorem",
+        "Expansion of function (single variable)",
+        "T aylor and Maclaurin Series",
+        "Riemann Integration",
+        "Riemann Sum",
+        "Improper Integrals",
+        "Beta and Gamma function and their properties"
+      ]
+    },
+    {
+      "unit": "Unit 4: Multivariable Calculus (Differentiation)",
+      "topics": [
+        "Function with two or more variable",
+        "Limit",
+        "continuity and Partial differentiation",
+        "Total Differentiation Taylor\u2019s series and Maclaurin\u2019s series for function with two variable",
+        "Jacobian",
+        "Maxima and Minima",
+        "Method of Lagrange\u2019s multiplier"
+      ]
+    },
+    {
+      "unit": "Unit 5: Multivariable Calculus (Integration)",
+      "topics": [
+        "Double Integral",
+        "change of order of integration",
+        "Triple integral",
+        "Change of Variable in a Double and Triple Integrals",
+        "Change to polar coordinate",
+        "Change to cylindrical coordinate",
+        "Change to spherical polar coordinate",
+        "Application to area and volume using double and triple integral"
+      ]
+    },
+    {
+      "unit": "Unit 6: Vector Calculus",
+      "topics": [
+        "Scalar and vector fields",
+        "Gradient",
+        "Directional derivative",
+        "Divergence",
+        "Curl and their properties",
+        "Line integral",
+        "Green\u2019s theorem in plane (without proof)",
+        "Surface integral",
+        "Stoke\u2019s theorem (without proof)",
+        "Volume Integral",
+        "Gauss-Divergence\u2019 theorem (without proof)"
+      ]
+    }
+  ],
+  "Engineering Physics": [
+    {
+      "unit": "Unit 1: Mechanics \u2014 Frame of Reference & Oscillations",
+      "topics": [
+        "1. Frame of Reference: Non-Inertial frame of reference, rotating coordinate system, centripetal and Coriolis acceleration and its application in weather system. 2. Oscillations: Harmonic Oscillator",
+        "Damped Harmonic motion \u2013 overdamped",
+        "critically Damped and lightly damped oscillators",
+        "Force Oscillators and Resonance"
+      ]
+    },
+    {
+      "unit": "Unit 2: Optics & LASER",
+      "topics": [
+        "Huygens\u2019s Principle",
+        "Superposition of Waves and interference of Light by wave front-splitting and amplitude-splitting",
+        "Young\u2019s double slit experiment",
+        "Michelson interferometer",
+        "Fraunhofer diffraction from single slit and circular aperture",
+        "Diffract ion Grating and their resolving power 2. LASER: Einstein\u2019s theory of matter-radiations interaction, Einstein\u2019s Coefficients (A and B)",
+        "Amplification by population inversion",
+        "Different types of lasers \u2013 Gas Laser",
+        "Helium-Neon Laser",
+        "Solid State Laser (Ruby",
+        "Neodymium)",
+        "Semiconductor Laser"
+      ]
+    },
+    {
+      "unit": "Unit 3: Quantum Mechanics",
+      "topics": [
+        "Compton Effect",
+        "Photoelectric Effect",
+        "Wave Particle duality",
+        "de Broglie\u2019s hypothesis",
+        "Heisenberg\u2019s Uncertainty Principle",
+        "Wave function and wave packets",
+        "phase and group velocities",
+        "Schrodinger\u2019s Wave Equation",
+        "Normalization",
+        "Expectation values",
+        "Eigenvalue s and Eigenfunction. 2. Applications in One dimensions: Application of Schrodinger Wave Equation for particle in one dimensional box \u2013 its wavefunction and eigenvalue of energy and momentum"
+      ]
+    },
+    {
+      "unit": "Unit 4: Vector Calculus & Electrostatics",
+      "topics": [
+        "Gradient",
+        "Divergence and Curl",
+        "Line",
+        "Surface and Volume integrals",
+        "Gauss\u2019s Divergence theorem and Stokes\u2019 theorem in Cartesian Coordinate. 2. Electrostatics: Gauss\u2019s Law and its applications",
+        "Divergence and Curl of Electrostatic fields",
+        "Electrostat ic Potential",
+        "Boundary Conditions",
+        "Poisson\u2019s and Laplace\u2019s equations",
+        "Dielectrics",
+        "Polarization",
+        "Bound Charges",
+        "Electric displacement",
+        "Boundary Conditions in dielectrics"
+      ]
+    },
+    {
+      "unit": "Unit 5: Magnetostatics & Electrodynamics",
+      "topics": [
+        "Lorentz force",
+        "Biot-Savart and Ampere\u2019s circuital laws and their applications",
+        "Divergence and Curl of Magneto static fields",
+        "Magnetic vector potential",
+        "Force and torque on a magnetic dipole",
+        "Magnetic Materials",
+        "Magnetization",
+        "Bound currents",
+        "Boundary conditions. 2. Electrodynamics and Electromagnetic Waves: Ohm\u2019s law, Motional EMF, Faraday\u2019s Law, Lenz\u2019s law, Self and mutual inductance",
+        "Energy stored in magnetic field",
+        "Maxwell\u2019s equations in vacuum and nonconducting medium",
+        "Continuity Equation",
+        "Poynting Theorem",
+        "Wave Equations: plain ele ctromagnetic wave in vacuum and their transverse nature and Polarization"
+      ]
+    },
+    {
+      "unit": "Unit 6: Solids & Semiconductors",
+      "topics": [
+        "Free electron theory of metal",
+        "fermi level",
+        "Bloch\u2019s theorem for particle in a periodic Potential",
+        "Kroning-Penney model and origin of energy band. 2. Electronic Materials: Metals, semiconductors and insulators",
+        "intrinsic and extrinsic semiconductors",
+        "Carrier transport",
+        "diffusion and drift",
+        "P-N junction"
+      ]
+    }
+  ],
+  "Engineering Mathematics II": [
+    {
+      "unit": "Unit 1: Complex Analysis \u2013 I",
+      "topics": [
+        "Functions of complex variable",
+        "limit",
+        "Continuity",
+        "Differentiability",
+        "Analytic function",
+        "Cauchy-Riemann Equations in Cartesian and polar form",
+        "harmonic function and harmonic conjugate"
+      ]
+    },
+    {
+      "unit": "Unit 2: Complex Analysis \u2013 II",
+      "topics": [
+        "Line Integral",
+        "contour integrals",
+        "Cauchy theorem",
+        "Cauchy\u2019s Integral formula(without proof)",
+        "Taylors series",
+        "zero of analytic functions",
+        "singularities",
+        "Laurent\u2019s series",
+        "residue",
+        "Cauchy residue theorem(without Proof) and its applications"
+      ]
+    },
+    {
+      "unit": "Unit 3: Ordinary Differential Equations",
+      "topics": [
+        "Linear differential equations of nth Order with constant coefficients",
+        "solution of Homogeneous and Non-Homogeneous Equations",
+        "Equations with variable coefficients",
+        "Cauchy- Euler Equations",
+        "Method of Variation of Parameters"
+      ]
+    },
+    {
+      "unit": "Unit 4: Sequence and Series",
+      "topics": [
+        "Introduction of Sequence and Series",
+        "Nature of series Tests of convergence of Series: Comparison test, D\u2019Alembert ratio test, Cauchy\u2019s Root test, Raabe\u2019s test, Logarithmic test, Cauchy\u2019s condensation test"
+      ]
+    },
+    {
+      "unit": "Unit 5: Laplace Transform",
+      "topics": [
+        "Laplace Transform",
+        "Existence theorem",
+        "properties of Laplace Transform",
+        "Laplace Transform of Periodic functions",
+        "Inverse Laplace Transform",
+        "convo lution theorem. Application of Laplace Transform to solve Ordinary differential equations"
+      ]
+    },
+    {
+      "unit": "Unit 6: Fourier Series",
+      "topics": [
+        "Fourier Series",
+        "Fourier Series for odd and even functions",
+        "Half range sine and cosine series",
+        "Parseval\u2019s theorem"
+      ]
+    }
+  ],
+  "Programming for Problem Solving": [
+    {
+      "unit": "Unit 1: Introduction to Programming",
+      "topics": [
+        "Introduction to components of a computer system (disks",
+        "memory",
+        "processor",
+        "where a program is stored and executed",
+        "operating system",
+        "compilers etc.). Idea of Algorithm: steps to solve logical and numerical problems. Representation of Algorithm: Flowchart/ Pseudo code with examples. From algorithms to programs",
+        "source code",
+        "variables (with data types) variables and memory locations",
+        "Syntax and Logical Errors in compilation",
+        "object and executable code"
+      ]
+    },
+    {
+      "unit": "Unit 2: Operators, Conditional Branching and Loops",
+      "topics": [
+        "Arithmetic expressions/arithmetic operators",
+        "relational operators",
+        "logical operators",
+        "bitwise operators and precedence. Writing and evaluation of conditionals and consequent branching",
+        "Iteration and loops"
+      ]
+    },
+    {
+      "unit": "Unit 3: Arrays and String",
+      "topics": [
+        "Array declaration & initialization",
+        "bo und checking arrays (1-d",
+        "2-d)",
+        "character arrays and strings"
+      ]
+    },
+    {
+      "unit": "Unit 4: Function, Recursion and Pointers",
+      "topics": [
+        "Functions (including using built in libraries)",
+        "Parameter passing in functions",
+        "call by value",
+        "passing arrays to functions: Recursion, as a different way of solving problems. Example programs, such as Finding Factorial, Fibonacci series, Ackerman function etc. Idea of pointers, Defining pointers, Use of Pointers in self-referential structures, idea of call by reference"
+      ]
+    },
+    {
+      "unit": "Unit 5: User defined Data Types and File handling",
+      "topics": [
+        "Structure- defining",
+        "declaring",
+        "initializing",
+        "accessing structure members",
+        "processing of structure",
+        "array of structures",
+        "structures within structure",
+        "structure and function",
+        "type definition",
+        "Union \u2014 definition",
+        "declaration",
+        "accessing union members",
+        "initializing union. Introduction",
+        "file declaration",
+        "opening and closing a file",
+        "working with text and binary files",
+        "I/O operations on file",
+        "error handling",
+        "random access to files"
+      ]
+    },
+    {
+      "unit": "Unit 6: Basic Algorithms",
+      "topics": [
+        "Searching",
+        "Basic Sorting Algorithms (Bubble",
+        "Insertion and Selection)",
+        "Finding roots of equations",
+        "notion of order of complexity through example programs (no formal definition required)"
+      ]
+    }
+  ],
+  "IT Workshop": [
+    {
+      "unit": "Unit 1: PC HARDWARE(6 lectures):",
+      "topics": [
+        "Identification of the peripherals of a computer",
+        "components in a CPU and its functions. Block diagram of the CPU along with the configuration of each peripheral. Functions of Motherboard. Assembling and Disassembling of PC. Installation of OS. Basic Linux commands"
+      ]
+    },
+    {
+      "unit": "Unit 2: INTERNET(4 lectures)",
+      "topics": [
+        "Web Browsers",
+        "Access of websites",
+        "Surfing the Web",
+        "Search Engines",
+        "Customization of web browsers",
+        "proxy settings",
+        "bookmarks",
+        "search toolbars",
+        "pop-up blockers. Antivirus types",
+        "Protection from various threats"
+      ]
+    },
+    {
+      "unit": "Unit 3: MICROSOFT WORD(4 lectures)",
+      "topics": [
+        "Overview of MS word features. Usage of Hyperlink",
+        "Symbols",
+        "Spell Check",
+        "Track Changes. Table of Content",
+        "Newspaper columns",
+        "Images from files and clipart",
+        "Drawing toolbar and Word Art",
+        "Formatting Images",
+        "Textboxes",
+        "Paragraphs and Mail Merge in word. Using Word to create Project Certificate",
+        "Project Abstract",
+        "News Letter",
+        "Resume"
+      ]
+    },
+    {
+      "unit": "Unit 4: LaTeX(6 lectures)",
+      "topics": [
+        "Word Orientation: Overview of LaTeX and tool word: Importance of LaTeX and MS office or equivalent (FOSS) tool Word as word Processors",
+        "Details of the f our tasks and features that would be covered in each",
+        "Using LaTeX and word \u2013 Accessing",
+        "overview of toolbars",
+        "saving files",
+        "Using help and resources",
+        "rulers",
+        "format painter in word. Using LaTeX and Word to create a project certificate. Features to be cov ered:- Formatting Fonts in word, Drop Cap in word, Applying Text effects, Using Character Spacing, Borders and Colors",
+        "Inserting Header and Footer",
+        "Using Date and Time option in both LaTeX. Creating project abstract Features to be covered: -Formatting Styles, Inserting table, Bullets and Numbering",
+        "Changing Text Direction",
+        "Cell alignment",
+        "Footnote",
+        "Hyperlink",
+        "Symbols",
+        "Spell Check",
+        "Track Changes. Creating a Newsletter: Features to be covered: - Table of Content, Newspaper columns, Images from files and clipa rt",
+        "Drawing toolbar and Word Art",
+        "Formatting Images",
+        "Textboxes",
+        "Paragraphs and Mail Merge in word"
+      ]
+    },
+    {
+      "unit": "Unit 5: MICROSOFT EXCEL( 4 lectures)",
+      "topics": [
+        "Overview of Excel Features Excel formulae & Functions",
+        "conditional formatting",
+        "Charts",
+        "Hyper linking",
+        "Renaming and In serting worksheets",
+        "Data Analysis functions. Creating a Scheduler (Features: - Gridlines, Format Cells, Summation, auto fill, Formatting) Calculating GPA (Features: - Cell Referencing, Formulae and functions in excel"
+      ]
+    },
+    {
+      "unit": "Unit 6: MICROSOFT POWER POINT( 4 lectures)",
+      "topics": [
+        "Overview of PowerPoint features",
+        "Insertion of images",
+        "slide transition",
+        "Custom animation",
+        "Hyperlinks"
+      ]
+    }
+  ],
+  "Python Programming": [
+    {
+      "unit": "Unit 1: Input and Output",
+      "topics": [
+        "Identifiers",
+        "Keywords",
+        "Statements and Expressions",
+        "Variables",
+        "Operators",
+        "Precedence and Associativity",
+        "Data Types",
+        "Indentation",
+        "Comments",
+        "Reading Input",
+        "Print Output",
+        "Type Conversions",
+        "The type() Function and Is Operator",
+        "Dynamic and Strongly Typed Language"
+      ]
+    },
+    {
+      "unit": "Unit 2: Control Flow statements, Function and Loops",
+      "topics": [
+        "Control Flow Statements",
+        "The if Decision Control Flow Statement",
+        "The if\u2026else Decision Control Flow Statement",
+        "The if\u2026elseif\u2026else Decision Control Statement",
+        "Nested if Statement",
+        "Built-InFunctions",
+        "Commonly Used Modules",
+        "Function Definition and Calling the Function",
+        "The return Statement and void Function",
+        "Scope and Lifetime of Variables",
+        "Default Parameters",
+        "The while Loop",
+        "The for Loop",
+        "The continue and break Statements"
+      ]
+    },
+    {
+      "unit": "Unit 3: Strings",
+      "topics": [
+        "Creating and Storing Strings",
+        "Basic String Operations",
+        "Accessing Characters in String by Index Number",
+        "String Slicing and Joining",
+        "String Methods",
+        "Formatting Strings"
+      ]
+    },
+    {
+      "unit": "Unit 4: Lists",
+      "topics": [
+        "Creating Lists",
+        "Basic List Operations",
+        "Indexing and Slicing in Lists",
+        "Built-In Functions Used on Lists",
+        "List Methods",
+        "The del Statement"
+      ]
+    },
+    {
+      "unit": "Unit 5: Dictionaries, Tuples and Sets",
+      "topics": [
+        "Creating Dictionary",
+        "Accessing and Modifying key value Pairs in Dictionaries",
+        "Built-In Functions Used on Dictionaries",
+        "Dictionary Methods",
+        "The del Statement",
+        "Tuples and Sets",
+        "Creating Tuples",
+        "Basic Tuple Operations",
+        "Indexing and Slicing in Tuples",
+        "Built-In Functions Used on Tuples",
+        "Relation between Tuples and Lists",
+        "Relation between Tuples and Dictionaries",
+        "Tuple Methods",
+        "Using zip() Function",
+        "Sets",
+        "Set Methods",
+        "Traversing of Sets",
+        "Frozen set"
+      ]
+    },
+    {
+      "unit": "Unit 6: Files",
+      "topics": [
+        "Types of Files",
+        "Creating and Reading Text Data",
+        "File Methods to Read and Write Data",
+        "Reading and Writing Binary Files",
+        "The Pickle Module",
+        "Reading and Writing CSV Files",
+        "Python os and os.path Modules"
+      ]
+    }
+  ],
+  "Web Design": [
+    {
+      "unit": "Unit 1: Fundamentals of Internet and Web Technologies",
+      "topics": [
+        "Introduction to Internet",
+        "World Wide Web",
+        "History of the web",
+        "Website",
+        "Homepage",
+        "Domain Narne",
+        "Web B rolvsers and Web server",
+        "Web Server Working",
+        "Client-Server Architecture",
+        "3-Tier Web Architecture",
+        "Web hosting",
+        "URL",
+        "MIME",
+        "HTTP protocol",
+        "Web Programrners Toolbox"
+      ]
+    },
+    {
+      "unit": "Unit 2: Introduction to HTML: Elements and Structure",
+      "topics": [
+        "HTML elements",
+        "History of HTML",
+        "Document body",
+        "Different tags",
+        "sections",
+        "text",
+        "heading",
+        "paragraphs",
+        "hyperlink",
+        "lists",
+        "tables",
+        "color coding and images",
+        "Div and Span Tags for grouping",
+        "character entities",
+        "URL Encoding",
+        "frames",
+        "and frame sets"
+      ]
+    },
+    {
+      "unit": "Unit 3: HTML Forms and Multimedia Integration",
+      "topics": [
+        "Attributes",
+        "HTML canvas",
+        "embedding audio and video in a webpage",
+        "HTML Vs XHTML"
+      ]
+    },
+    {
+      "unit": "Unit 4: Introduction to CSS: Styling and Layouts",
+      "topics": [
+        "syntax and structure",
+        "External Style Sheets",
+        "Internal Style Sheets",
+        "lnline Style",
+        "CSS Selectors",
+        "div & span tag",
+        "CSS Color",
+        "CSS Backgrounds",
+        "Borders",
+        "Margins",
+        "Padding. Box Model",
+        "Heightiwidth",
+        "outline",
+        "Text",
+        "Font",
+        "Tables",
+        "CSS Buttons",
+        "CSS Display",
+        "CSS Float & Clear",
+        "CSS Overflow"
+      ]
+    },
+    {
+      "unit": "Unit 5: JavaScript Basics: Scripting and Control",
+      "topics": [
+        "Scripting",
+        "w-hat can JavaScript Do",
+        "Need of JavaScript",
+        "Enhancing HTML Documents with JavaScript",
+        "the Build ing Blocks: Data types, variables, Types of Operators, Operator Precedetrce, Type conversion",
+        "Conditional statement irr.lavaScript: if else, and else il",
+        "Switch statement",
+        "Loops in JavaScript: for, while, do/while, break, continue"
+      ]
+    },
+    {
+      "unit": "Unit 6: Advanced JavaScript: Objects and Events",
+      "topics": [
+        "(array",
+        "number",
+        "string. Boolean)",
+        "event handling (e.g",
+        "onclick",
+        "onsubniit)",
+        "error liandling: JavaScript scope",
+        "responsive modal forrns",
+        "form validation"
+      ]
+    }
+  ],
+  "Basic Electronics Engineering": [
+    {
+      "unit": "Unit 1: Semiconductor diode",
+      "topics": [
+        "Intrinsic and extrinsic types",
+        "energy band in intrinsic and extrinsic Semiconductor",
+        "equilibrium carrier concentration Direct and indirect band-gap semiconductor. Ideal diode Construction",
+        "p-n junction under open circuit",
+        "drift",
+        "and diffusion current",
+        "buil t in potential",
+        "forward bias",
+        "and reverse bias condition. Effect of temperature",
+        "static and dynamic resistance",
+        "breakdown mechanism in diode",
+        "Junction capacitance. Zener diode Working",
+        "VI characteristics Light emitting Diode",
+        "Photodiode",
+        "Solar cell"
+      ]
+    },
+    {
+      "unit": "Unit 2: Diode Applications",
+      "topics": [
+        "Half wave rectifiers",
+        "Full wave rectifiers & Rectifier with filters",
+        "Zener diode application as voltage regulator",
+        "Clipping and Clamping circuits",
+        "Voltage doubler (includes numerical on rectifier",
+        "filter",
+        "and Zener regulator)"
+      ]
+    },
+    {
+      "unit": "Unit 3: Bipolar Junction Transistor",
+      "topics": [
+        "BJT introduction: Construction, Symbol, and types (PNP and NPN)",
+        "working of BJT",
+        "BJT configuration and characteristics",
+        "Load line analysis",
+        "Operating point",
+        "Need for Biasing",
+        "different Biasing circuits",
+        "Bias stability. BJT as a switch &Amplifier",
+        "low frequency small signal model of BJT",
+        "CE amplifier with and without feedback"
+      ]
+    },
+    {
+      "unit": "Unit 4: Field Effect Transistor",
+      "topics": [
+        "General characteristics of FET",
+        "Comparison between FET & BJT",
+        "JFET: Constru ction, Principle of Operation, Shockley equation. Outputand transfer characteristics",
+        "Depletion & Enhancement Type MOSFET: Construction, Principle of operation. Output and transfer characteristics"
+      ]
+    },
+    {
+      "unit": "Unit 5: Operational Amplifier",
+      "topics": [
+        "Block diag ram of an Operational amplifier",
+        "schematic symbol",
+        "characteristics of an ideal and practical operational amplifier",
+        "concept of virtual ground",
+        "Inverting and non-inverting amplifier",
+        "voltage follower",
+        "adder",
+        "subtractor",
+        "integrator and differentiator"
+      ]
+    },
+    {
+      "unit": "Unit 6: Fundamental of Digital Electronics",
+      "topics": [
+        "Introduction to number system: octal, Hexadecimal, Binary numbers, Binary addition using 1\u2019s and 2\u2019s complement method. logic gates",
+        "Universal gates",
+        "Boolean Algebra",
+        "De Morgan\u2019s theorems",
+        "Simplification",
+        "and realization of Boolean expression using basic gates and NAND gates"
+      ]
+    }
+  ]
+};
+
 const GOVT_JOBS = [
   {name:'UPSC', full:'Union Public Service Commission', site:'https://upsc.gov.in', note:'Civil Services, Engineering Services (ESE) & more.'},
   {name:'BPSC', full:'Bihar Public Service Commission', site:'https://bpsc.bih.nic.in', note:'Bihar state civil & technical services.'},
@@ -491,6 +1352,24 @@ const SOCIALS = [
   {name:'Discord', icon:'🎮', url:'https://discord.com/'},
   {name:'Email', icon:'✉️', url:'mailto:hello@beuhub.example'}
 ];
+
+/* BEU AI Mentor — daily content channel promo shown on the homepage.
+   Update `url` to the real channel link once it's live. */
+const BEU_AI_MENTOR = {
+  name: 'BEU AI Mentor',
+  tagline: 'Daily bite-sized content for BEU students',
+  url: 'https://youtube.com/',
+  content: [
+    {icon:'📢', label:'BEU exam updates'},
+    {icon:'🎯', label:'GATE preparation'},
+    {icon:'🗄️', label:'DBMS in 60 seconds'},
+    {icon:'🧠', label:'TOC tricks'},
+    {icon:'🎞️', label:'DAA animations'},
+    {icon:'💼', label:'Placement tips'},
+    {icon:'🏛️', label:'Government job updates'},
+    {icon:'💬', label:'PYQ discussions'}
+  ]
+};
 
 const STUDENT_HELP = [
   {name:'Hostel Help', icon:'🏠', desc:'Allotment process, mess rules & common FAQs.'},
@@ -590,6 +1469,18 @@ function openJobDetail(name){
   `, name);
 }
 
+function renderMentorSection(){
+  $('#mentorName').textContent = BEU_AI_MENTOR.name;
+  $('#mentorTagline').textContent = BEU_AI_MENTOR.tagline;
+  $('#mentorFollowBtn').href = BEU_AI_MENTOR.url;
+  $('#mentorContentGrid').innerHTML = BEU_AI_MENTOR.content.map(c=>`
+    <div style="background:rgba(255,255,255,.14); border-radius:12px; padding:12px; text-align:center;">
+      <div style="font-size:1.4rem;">${c.icon}</div>
+      <p style="color:#fff; font-size:.78rem; font-weight:600; margin-top:6px;">${escapeHtml(c.label)}</p>
+    </div>
+  `).join('');
+}
+
 function renderEdu(){
   $('#eduGrid').innerHTML = EDU_WEBSITES.map(w=>`
     <div class="card">
@@ -671,6 +1562,7 @@ function renderResourceList(container, type, branch, sem, onlySubject){
   if(onlySubject && onlySubject !== 'All') subs = subs.filter(s=>s===onlySubject);
   container.innerHTML = subs.map(s=>{
     const url = files[fileKey(branch, sem, s)];
+    const hasTracker = type === 'syllabus' && SYLLABUS_TOPICS[s];
     return `
     <div class="card" style="flex-direction:row; align-items:center; gap:12px">
       <div class="card-icon">📄</div>
@@ -678,11 +1570,15 @@ function renderResourceList(container, type, branch, sem, onlySubject){
         <h3 style="font-size:.92rem">${s}</h3>
         <p style="font-size:.76rem">${branch} • Semester ${sem}</p>
       </div>
-      ${url
-        ? `<a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="noopener noreferrer">View</a>`
-        : `<span class="tag" style="white-space:nowrap">Not uploaded yet</span>`}
+      <div class="flex gap-8" style="flex-wrap:wrap; justify-content:flex-end;">
+        ${hasTracker ? `<button class="btn btn-ghost btn-sm tracker-open-btn" data-subject="${escapeHtml(s)}">📋 Tracker</button>` : ''}
+        ${url
+          ? `<a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="noopener noreferrer">View</a>`
+          : `<span class="tag" style="white-space:nowrap">Not uploaded yet</span>`}
+      </div>
     </div>`;
   }).join('');
+  $$('.tracker-open-btn', container).forEach(b=> b.addEventListener('click', ()=> openSyllabusTracker(b.dataset.subject)));
 }
 function buildBrowser(containerId, {branchSel, semSel, subjSel}, type){
   const branch = branchSel.value, sem = semSel.value;
@@ -712,7 +1608,85 @@ function openResourcePanel(type, title){
   run();
 }
 
-/* ============================== ATTENDANCE ============================== */
+/* ============================== SYLLABUS TRACKER ==============================
+   Unit-by-unit "mark as done" checklist for subjects where SYLLABUS_TOPICS has
+   parsed data. Progress is saved in localStorage per subject (LS.syllabusProgress). */
+function trackerTopicId(subject, unitIdx, topicIdx){ return `${subject}__u${unitIdx}__t${topicIdx}`; }
+function openSyllabusTracker(subject){
+  const units = SYLLABUS_TOPICS[subject];
+  if(!units) return;
+  const totalTopics = units.reduce((n,u)=> n + u.topics.length, 0);
+  const progress = store.get(LS.syllabusProgress, {});
+  const doneSet = new Set(progress[subject] || []);
+
+  const bodyHtml = `
+    <div class="tracker-progress"><div class="tracker-progress-bar" id="trackerBar" style="width:0%"></div></div>
+    <p class="muted" id="trackerCount" style="font-size:.78rem;"></p>
+    ${units.map((u, ui)=>`
+      <div class="tracker-unit-banner">${escapeHtml(u.unit)}</div>
+      ${u.topics.map((t, ti)=>{
+        const id = trackerTopicId(subject, ui, ti);
+        const isDone = doneSet.has(id);
+        return `
+        <div class="tracker-topic${isDone?' done':''}" data-id="${id}">
+          <p class="tracker-topic-text">${escapeHtml(t)}</p>
+          <div class="tracker-actions">
+            <button class="tracker-pill ask-ai" data-topic="${escapeHtml(t)}" data-subject="${escapeHtml(subject)}">Ask AI</button>
+            <a class="tracker-pill youtube" href="https://www.youtube.com/results?search_query=${encodeURIComponent(t + ' ' + subject)}" target="_blank" rel="noopener noreferrer">YouTube</a>
+            <button class="tracker-pill mark-done${isDone?' is-done':''}" data-id="${id}">${isDone?'✓ Done':'Mark as Done'}</button>
+          </div>
+        </div>`;
+      }).join('')}
+    `).join('')}
+  `;
+  openPanel(bodyHtml, subject);
+
+  function updateProgressBar(){
+    const prog = store.get(LS.syllabusProgress, {});
+    const done = new Set(prog[subject] || []);
+    const pct = totalTopics ? Math.round((done.size / totalTopics) * 100) : 0;
+    $('#trackerBar').style.width = pct + '%';
+    $('#trackerCount').textContent = `${done.size} / ${totalTopics} topics done (${pct}%)`;
+  }
+  updateProgressBar();
+
+  $$('.mark-done').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.id;
+      const prog = store.get(LS.syllabusProgress, {});
+      const done = new Set(prog[subject] || []);
+      const row = btn.closest('.tracker-topic');
+      if(done.has(id)){
+        done.delete(id);
+        btn.textContent = 'Mark as Done';
+        btn.classList.remove('is-done');
+        row.classList.remove('done');
+      } else {
+        done.add(id);
+        btn.textContent = '✓ Done';
+        btn.classList.add('is-done');
+        row.classList.add('done');
+      }
+      prog[subject] = [...done];
+      store.set(LS.syllabusProgress, prog);
+      updateProgressBar();
+    });
+  });
+
+  $$('.ask-ai').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      closePanel();
+      AIChat.toggle(true);
+      const input = $('#aiInput');
+      if(input){
+        input.value = `Explain this topic for my exam — "${btn.dataset.topic}" (from ${btn.dataset.subject})`;
+        AIChat.send();
+      }
+    });
+  });
+}
+
+
 const Attendance = {
   course: 'btech',
   data(){
@@ -979,6 +1953,324 @@ function renderReviews(){
       <p class="muted" style="font-size:.72rem">${r.date}</p>
     </div>
   `).join('') || '<p class="muted">No reviews yet — be the first to share feedback!</p>';
+}
+
+/* ============================== RATE MY PROFESSOR ==============================
+   Professors and ratings are 100% crowdsourced — students add professors and
+   rate them themselves; nothing is pre-filled. Everything below is stored in
+   localStorage on this device only (LS.professors / LS.profRatings). To make
+   ratings visible across every student's device, this would need to be wired
+   up to a shared backend (e.g. Firebase/Supabase) instead of localStorage. */
+function profAverages(profId){
+  const ratings = store.get(LS.profRatings, []).filter(r => r.profId === profId);
+  const out = {count: ratings.length};
+  let overallSum = 0, overallN = 0;
+  PROF_RATING_CATEGORIES.forEach(c=>{
+    const vals = ratings.map(r=> r[c.key]).filter(v=> typeof v === 'number');
+    const avg = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+    out[c.key] = avg;
+    overallSum += vals.reduce((a,b)=>a+b,0);
+    overallN += vals.length;
+  });
+  out.overall = overallN ? overallSum/overallN : 0;
+  return out;
+}
+function containsBannedContent(text){
+  const lower = (text||'').toLowerCase();
+  return PROF_BANNED_WORDS.some(w => lower.includes(w));
+}
+function initProfessors(){
+  const collegeSel = $('#profCollege');
+  collegeSel.innerHTML = '<option value="">All colleges</option>' + BEU_COLLEGES.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  const deptSel = $('#profDept');
+  deptSel.innerHTML = '<option value="">All departments</option>' + BRANCHES.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+  [collegeSel, deptSel].forEach(el=> el.addEventListener('change', renderProfessorList));
+  $('#profSearch').addEventListener('input', renderProfessorList);
+  $('#addProfBtn').addEventListener('click', openAddProfessorForm);
+  renderProfessorList();
+}
+function renderProfessorList(){
+  const college = $('#profCollege').value;
+  const dept = $('#profDept').value;
+  const search = ($('#profSearch').value || '').trim().toLowerCase();
+  let all = store.get(LS.professors, []);
+  if(college) all = all.filter(p=> p.college === college);
+  if(dept) all = all.filter(p=> p.dept === dept);
+  if(search) all = all.filter(p=> p.name.toLowerCase().includes(search));
+
+  const filtered = !!(college || dept || search);
+  $('#profCount').textContent = `${all.length} professor${all.length===1?'':'s'}${filtered ? ' matching your filters' : ' added so far'}`;
+
+  if(!all.length){
+    $('#profList').innerHTML = `<div class="card" style="grid-column:1/-1; text-align:center;">
+      <p class="muted">No professors here yet. Be the first to add one!</p>
+      <button class="btn btn-primary btn-sm mt-8" id="profEmptyAddBtn">+ Add a Professor</button>
+    </div>`;
+    $('#profEmptyAddBtn').addEventListener('click', openAddProfessorForm);
+    return;
+  }
+
+  $('#profList').innerHTML = all.map(p=>{
+    const avg = profAverages(p.id);
+    const stars = avg.count ? '★'.repeat(Math.round(avg.overall)) + '☆'.repeat(5-Math.round(avg.overall)) : '☆☆☆☆☆';
+    return `
+      <div class="card">
+        <h3 style="font-size:1rem;">${escapeHtml(p.name)}</h3>
+        <p class="muted" style="font-size:.78rem;">${escapeHtml(p.dept)} · ${escapeHtml(p.college)}</p>
+        <p style="font-size:1.05rem; color:var(--accent);">${stars} <span class="muted" style="font-size:.78rem;">${avg.count ? avg.overall.toFixed(1)+'/5 · '+avg.count+' rating'+(avg.count===1?'':'s') : 'No ratings yet'}</span></p>
+        <button class="btn btn-ghost btn-sm prof-detail-btn" data-id="${p.id}">Rate & view reviews</button>
+      </div>
+    `;
+  }).join('');
+  $$('.prof-detail-btn').forEach(b=> b.addEventListener('click', ()=> openProfessorDetail(b.dataset.id)));
+}
+function openAddProfessorForm(){
+  const html = `
+    <form id="addProfForm">
+      <div class="form-row">
+        <label>College</label>
+        <select id="apCollege" required>${BEU_COLLEGES.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select>
+      </div>
+      <div class="form-row mt-8">
+        <label>Department</label>
+        <select id="apDept" required>${BRANCHES.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}</select>
+      </div>
+      <div class="form-row mt-8">
+        <label>Professor's name</label>
+        <input type="text" id="apName" required placeholder="e.g. Dr. R. K. Sharma">
+      </div>
+      <p class="muted mt-8" style="font-size:.76rem;">Only add real faculty you've actually been taught by. Fake or joke entries will be removed.</p>
+      <button type="submit" class="btn btn-primary btn-block mt-16">Add Professor</button>
+    </form>
+  `;
+  openPanel(html, 'Add a Professor');
+  $('#addProfForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const name = $('#apName').value.trim();
+    const college = $('#apCollege').value;
+    const dept = $('#apDept').value;
+    if(!name){ toast("Enter the professor's name"); return; }
+    if(containsBannedContent(name)){ toast('Please keep names respectful'); return; }
+    const all = store.get(LS.professors, []);
+    const exists = all.some(p=> p.name.toLowerCase()===name.toLowerCase() && p.college===college && p.dept===dept);
+    if(exists){ toast('This professor is already listed — search for them instead'); return; }
+    const id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    all.unshift({id, name, college, dept, addedAt:new Date().toISOString()});
+    store.set(LS.professors, all);
+    closePanel();
+    renderProfessorList();
+    toast('Professor added — you can rate them now');
+  });
+}
+function openProfessorDetail(profId){
+  const all = store.get(LS.professors, []);
+  const p = all.find(x=> x.id === profId);
+  if(!p) return;
+  const avg = profAverages(profId);
+  const ratings = store.get(LS.profRatings, []).filter(r=> r.profId === profId).slice().reverse();
+
+  const catRows = PROF_RATING_CATEGORIES.map(c=>{
+    const val = avg[c.key] || 0;
+    return `<div class="flex justify-between items-center" style="font-size:.82rem; margin-bottom:6px;">
+      <span>${c.label}</span>
+      <span>${'★'.repeat(Math.round(val))}${'☆'.repeat(5-Math.round(val))} ${val ? val.toFixed(1) : '—'}</span>
+    </div>`;
+  }).join('');
+
+  const catInputs = PROF_RATING_CATEGORIES.map(c=>`
+    <div class="mt-8">
+      <label style="font-size:.82rem;">${c.label}</label>
+      <div class="star-row" data-cat="${c.key}">
+        ${[1,2,3,4,5].map(n=>`<span class="star" data-val="${n}">☆</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  const reviewsHtml = ratings.length ? ratings.slice(0,8).map(r=>`
+    <div class="card mt-8" style="padding:12px;">
+      <p style="font-size:.85rem;">${escapeHtml(r.comment || '(No written comment)')}</p>
+      <p class="muted" style="font-size:.7rem;">${new Date(r.date).toLocaleDateString()}</p>
+    </div>
+  `).join('') : '<p class="muted mt-8">No written reviews yet.</p>';
+
+  const html = `
+    <p class="muted" style="font-size:.8rem;">${escapeHtml(p.dept)} · ${escapeHtml(p.college)}</p>
+    <div class="card mt-8" style="padding:14px;">${catRows || '<p class="muted">No ratings yet — be the first!</p>'}</div>
+    <h3 class="mt-16" style="font-size:.95rem;">Rate this professor</h3>
+    <form id="rateProfForm">
+      ${catInputs}
+      <div class="mt-8">
+        <label style="font-size:.82rem;">Comment (optional)</label>
+        <textarea id="rpComment" rows="3" placeholder="Describe the teaching experience — keep it respectful and specific."></textarea>
+      </div>
+      <p class="muted mt-8" style="font-size:.74rem;">Rate the teaching experience, not the person. No personal attacks, harassment or defamatory content — these will be removed.</p>
+      <button type="submit" class="btn btn-primary btn-block mt-16">Submit Rating</button>
+    </form>
+    <h3 style="font-size:.95rem; margin-top:24px;">Reviews</h3>
+    ${reviewsHtml}
+  `;
+  openPanel(html, p.name);
+
+  const selected = {};
+  $$('.star-row').forEach(row=>{
+    const cat = row.dataset.cat;
+    selected[cat] = 0;
+    $$('.star', row).forEach(star=>{
+      star.addEventListener('click', ()=>{
+        selected[cat] = Number(star.dataset.val);
+        $$('.star', row).forEach(s=> s.textContent = Number(s.dataset.val) <= selected[cat] ? '★' : '☆');
+      });
+    });
+  });
+
+  $('#rateProfForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const missing = PROF_RATING_CATEGORIES.filter(c=> !selected[c.key]);
+    if(missing.length){ toast('Please rate: ' + missing.map(c=>c.label).join(', ')); return; }
+    const comment = $('#rpComment').value.trim();
+    if(comment && containsBannedContent(comment)){ toast('Please keep your review respectful'); return; }
+    const entry = {profId, date:new Date().toISOString(), comment};
+    PROF_RATING_CATEGORIES.forEach(c=> entry[c.key] = selected[c.key]);
+    const allRatings = store.get(LS.profRatings, []);
+    allRatings.push(entry);
+    store.set(LS.profRatings, allRatings);
+    closePanel();
+    renderProfessorList();
+    toast('Thanks for rating! 🙌');
+  });
+}
+
+/* ============================== QUESTION & ANSWER BOARD ==============================
+   Admin (or anyone, since this static site has no login system) posts a question
+   tagged by branch/semester/subject; students answer it below. Everything is stored
+   in localStorage on this device only (LS.questions / LS.answers) — for answers to be
+   visible across every student's device this needs a shared backend instead. */
+function initQA(){
+  const branchSel = $('#qaBranch'), semSel = $('#qaSem');
+  fillSelect(branchSel, BRANCHES); fillSelect(semSel, SEMESTERS);
+  const subjSel = $('#qaSubject');
+  const refreshSubjects = ()=>{
+    fillSelect(subjSel, ['All', ...subjectsFor(Number(semSel.value), branchSel.value)]);
+  };
+  branchSel.addEventListener('change', ()=>{ refreshSubjects(); renderQuestionList(); });
+  semSel.addEventListener('change', ()=>{ refreshSubjects(); renderQuestionList(); });
+  subjSel.addEventListener('change', renderQuestionList);
+  refreshSubjects();
+  $('#askQuestionBtn').addEventListener('click', openAskQuestionForm);
+  renderQuestionList();
+}
+function renderQuestionList(){
+  const branch = $('#qaBranch').value, sem = $('#qaSem').value, subject = $('#qaSubject').value;
+  let all = store.get(LS.questions, []).slice().reverse();
+  if(branch) all = all.filter(q=> q.branch === branch);
+  if(sem) all = all.filter(q=> q.sem === sem);
+  if(subject && subject !== 'All') all = all.filter(q=> q.subject === subject);
+
+  $('#qaCount').textContent = `${all.length} question${all.length===1?'':'s'}`;
+
+  if(!all.length){
+    $('#qaList').innerHTML = `<div class="card" style="grid-column:1/-1; text-align:center;">
+      <p class="muted">No questions here yet.</p>
+      <button class="btn btn-primary btn-sm mt-8" id="qaEmptyAskBtn">+ Post a Question</button>
+    </div>`;
+    $('#qaEmptyAskBtn').addEventListener('click', openAskQuestionForm);
+    return;
+  }
+
+  const allAnswers = store.get(LS.answers, []);
+  $('#qaList').innerHTML = all.map(q=>{
+    const count = allAnswers.filter(a=> a.questionId === q.id).length;
+    return `
+      <div class="card">
+        <p class="muted" style="font-size:.74rem;">${escapeHtml(q.subject)} · ${escapeHtml(q.branch)} · Sem ${escapeHtml(q.sem)}</p>
+        <h3 style="font-size:.95rem;">${escapeHtml(q.text)}</h3>
+        <p class="muted" style="font-size:.78rem;">${count} answer${count===1?'':'s'}</p>
+        <button class="btn btn-ghost btn-sm qa-detail-btn" data-id="${q.id}">View &amp; Answer</button>
+      </div>
+    `;
+  }).join('');
+  $$('.qa-detail-btn').forEach(b=> b.addEventListener('click', ()=> openQuestionDetail(b.dataset.id)));
+}
+function openAskQuestionForm(){
+  const html = `
+    <form id="askQForm">
+      <div class="form-row cols-2">
+        <div><label>Branch</label><select id="aqBranch">${BRANCHES.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}</select></div>
+        <div><label>Semester</label><select id="aqSem">${SEMESTERS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-row mt-8">
+        <label>Subject</label>
+        <select id="aqSubject"></select>
+      </div>
+      <div class="form-row mt-8">
+        <label>Question</label>
+        <textarea id="aqText" rows="3" required placeholder="Type the question for students to answer..."></textarea>
+      </div>
+      <p class="muted mt-8" style="font-size:.76rem;">Keep questions academic and exam/interview relevant.</p>
+      <button type="submit" class="btn btn-primary btn-block mt-16">Post Question</button>
+    </form>
+  `;
+  openPanel(html, 'Post a Question');
+  const branchSel = $('#aqBranch'), semSel = $('#aqSem'), subjSel = $('#aqSubject');
+  const refresh = ()=> fillSelect(subjSel, subjectsFor(Number(semSel.value), branchSel.value));
+  branchSel.addEventListener('change', refresh); semSel.addEventListener('change', refresh);
+  refresh();
+
+  $('#askQForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const text = $('#aqText').value.trim();
+    if(!text){ toast('Enter a question'); return; }
+    if(containsBannedContent(text)){ toast('Please keep the question respectful'); return; }
+    const q = {
+      id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      branch: branchSel.value, sem: semSel.value, subject: subjSel.value,
+      text, date: new Date().toISOString()
+    };
+    const all = store.get(LS.questions, []);
+    all.push(q);
+    store.set(LS.questions, all);
+    closePanel();
+    renderQuestionList();
+    toast('Question posted');
+  });
+}
+function openQuestionDetail(qId){
+  const q = store.get(LS.questions, []).find(x=> x.id === qId);
+  if(!q) return;
+  const answers = store.get(LS.answers, []).filter(a=> a.questionId === qId).slice().reverse();
+
+  const answersHtml = answers.length ? answers.map(a=>`
+    <div class="card mt-8" style="padding:12px;">
+      <p style="font-size:.85rem;">${escapeHtml(a.text)}</p>
+      <p class="muted" style="font-size:.7rem;">${new Date(a.date).toLocaleDateString()}</p>
+    </div>
+  `).join('') : '<p class="muted mt-8">No answers yet — be the first!</p>';
+
+  const html = `
+    <p class="muted" style="font-size:.8rem;">${escapeHtml(q.subject)} · ${escapeHtml(q.branch)} · Sem ${escapeHtml(q.sem)}</p>
+    <div class="card mt-8" style="padding:14px;"><p style="font-size:.95rem;">${escapeHtml(q.text)}</p></div>
+    <h3 class="mt-16" style="font-size:.95rem;">Your answer</h3>
+    <form id="answerForm">
+      <textarea id="ansText" rows="4" required placeholder="Write your answer..."></textarea>
+      <button type="submit" class="btn btn-primary btn-block mt-16">Submit Answer</button>
+    </form>
+    <h3 class="mt-24" style="font-size:.95rem;">Answers (${answers.length})</h3>
+    ${answersHtml}
+  `;
+  openPanel(html, 'Question');
+
+  $('#answerForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const text = $('#ansText').value.trim();
+    if(!text){ toast('Write an answer first'); return; }
+    if(containsBannedContent(text)){ toast('Please keep your answer respectful'); return; }
+    const all = store.get(LS.answers, []);
+    all.push({id:'a_'+Date.now(), questionId:qId, text, date:new Date().toISOString()});
+    store.set(LS.answers, all);
+    openQuestionDetail(qId);
+    renderQuestionList();
+    toast('Answer submitted 🙌');
+  });
 }
 
 /* ============================== AI CHAT ============================== */
@@ -1809,8 +3101,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initNav();
   initRouter();
   initialRoute();
-  renderJobs(); renderEdu(); renderSocials(); renderHelp(); renderBlogs(); renderTools(); renderGames();
-  initAttendance(); initCGPA(); initTimetable(); initReviews();
+  renderJobs(); renderEdu(); renderSocials(); renderHelp(); renderBlogs(); renderTools(); renderGames(); renderMentorSection();
+  initAttendance(); initCGPA(); initTimetable(); initReviews(); initProfessors(); initQA();
   AIChat.init();
   initSearch();
   initPWA();

@@ -349,6 +349,24 @@ th{color:var(--text-dim); font-weight:600; font-size:.75rem; text-transform:uppe
 .hub-card:hover .hub-card-cta{gap:10px;}
 .hub-card .hub-card-cta{transition:gap .18s ease;}
 
+.star{cursor:pointer; font-size:1.15rem; user-select:none;}
+.star-row{display:flex; gap:4px;}
+
+/* ---------- Syllabus Tracker ---------- */
+.tracker-progress{background:var(--surface-2); border-radius:999px; height:8px; overflow:hidden; margin:10px 0 4px;}
+.tracker-progress-bar{height:100%; background:var(--primary); border-radius:999px; transition:width .25s ease;}
+.tracker-unit-banner{background:linear-gradient(135deg, var(--primary), #2f6fed); color:#fff; font-weight:700; padding:14px 18px; border-radius:14px; margin:20px 0 14px; box-shadow:var(--shadow);}
+.tracker-topic{border-bottom:1px solid var(--border); padding:12px 0;}
+.tracker-topic:last-child{border-bottom:none;}
+.tracker-topic-text{font-size:.94rem; margin-bottom:8px;}
+.tracker-topic.done .tracker-topic-text{text-decoration:line-through; color:var(--text-dim);}
+.tracker-actions{display:flex; gap:8px; flex-wrap:wrap;}
+.tracker-pill{border:none; border-radius:999px; padding:5px 12px; font-size:.76rem; font-weight:600; cursor:pointer;}
+.tracker-pill.ask-ai{background:var(--primary-dim); color:var(--primary);}
+.tracker-pill.youtube{background:#fde3e2; color:#c62828;}
+.tracker-pill.mark-done{background:#dcf5e3; color:#1a9e5c;}
+.tracker-pill.mark-done.is-done{background:var(--success); color:#fff;}
+
 /* ---------- Quick Links (compact icon shortcuts) ---------- */
 .qlinks-group{margin-bottom:26px;}
 .qlinks-group:last-child{margin-bottom:0;}
@@ -432,6 +450,6 @@ body.is-premium .ad-slot::before{ content:"Ads hidden — Premium demo active"; 
 
 /* Utility */
 .flex{display:flex;} .items-center{align-items:center;} .justify-between{justify-content:space-between;}
-.gap-8{gap:8px;} .gap-12{gap:12px;} .mt-8{margin-top:8px;} .mt-16{margin-top:16px;} .text-center{text-align:center;}
+.gap-8{gap:8px;} .gap-12{gap:12px;} .mt-8{margin-top:8px;} .mt-16{margin-top:16px;} .mt-24{margin-top:24px;} .mb-16{margin-bottom:16px;} .text-center{text-align:center;}
 .w-full{width:100%;}
 .hide{display:none !important;}
