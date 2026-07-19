@@ -119,6 +119,23 @@ export default {
       return json({ reply: 'That message is too long — please shorten it.' }, 400, cors);
     }
 
+    // Optional image (Doubt Solver's "upload a photo of the question" feature).
+    // Expected shape: { mediaType: 'image/jpeg'|'image/png'|'image/webp', data: '<base64, no data: prefix>' }
+    const image = body.image && typeof body.image.data === 'string' ? body.image : null;
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const MAX_IMAGE_BASE64_CHARS = 5_000_000; // ~3.7MB decoded, well under Claude's per-image limit
+    if (image) {
+      if (!ALLOWED_IMAGE_TYPES.includes(image.mediaType)) {
+        return json({ reply: 'Unsupported image type — please upload a JPEG, PNG, WEBP or GIF.' }, 400, cors);
+      }
+      if (image.data.length > MAX_IMAGE_BASE64_CHARS) {
+        return json({ reply: 'That image is too large — please upload a smaller photo.' }, 400, cors);
+      }
+    }
+
+    // Optional reply-language hint from the Hindi/English toggle in the UI.
+    const lang = body.lang === 'hi' ? 'hi' : (body.lang === 'en' ? 'en' : null);
+
     // Rate limit by IP and globally, so one bad actor can't drain your API budget.
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
     const ipCheck = await checkRateLimit(env, `ip:${ip}`, PER_IP_LIMIT_PER_DAY);
@@ -136,7 +153,22 @@ export default {
       .filter(m => m && typeof m.text === 'string')
       .slice(-10)
       .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text.slice(0, MAX_PROMPT_LENGTH) }));
-    messages.push({ role: 'user', content: prompt });
+
+    if (image) {
+      messages.push({
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } },
+          { type: 'text', text: prompt },
+        ],
+      });
+    } else {
+      messages.push({ role: 'user', content: prompt });
+    }
+
+    const system = lang
+      ? `${SYSTEM_PROMPT}\n\nIMPORTANT: Reply only in ${lang === 'hi' ? 'Hindi (Devanagari script)' : 'English'} for this message, regardless of what language the student wrote in.`
+      : SYSTEM_PROMPT;
 
     try {
       const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -149,7 +181,7 @@ export default {
         body: JSON.stringify({
           model: MODEL,
           max_tokens: 1024,
-          system: SYSTEM_PROMPT,
+          system,
           messages,
         }),
       });

@@ -47,6 +47,7 @@
     <a href="#home" data-page-link="home" class="brand"><span class="brand-mark">BH</span> BEU Hub</a>
     <nav class="nav-links">
       <a href="#beu" data-page-link="beu">BEU</a>
+      <a href="#dashboard" data-page-link="dashboard">Dashboard</a>
       <a href="#resources" data-page-link="resources">Resources</a>
       <a href="#professors" data-page-link="professors">Professors</a>
       <a href="#qa" data-page-link="qa">Q&amp;A</a>
@@ -75,10 +76,13 @@
   </div>
   <nav class="mt-16">
     <a href="#home" data-page-link="home">🏠 Home</a>
+    <a href="#dashboard" data-page-link="dashboard">📊 Dashboard</a>
     <a href="#beu" data-page-link="beu">BEU Section</a>
     <a href="#resources" data-page-link="resources">Study Resources</a>
     <a href="#professors" data-page-link="professors">Rate My Professor</a>
     <a href="#qa" data-page-link="qa">Question &amp; Answer Board</a>
+    <a href="#quiz" data-page-link="quiz">🧠 Daily Quiz</a>
+    <a href="#profile" data-page-link="profile">🧑‍🎓 My Profile</a>
     <a href="#jobs" data-page-link="jobs">Government Jobs</a>
     <a href="#edu" data-page-link="edu">Educational Websites</a>
     <a href="#connect" data-page-link="connect">Connect With Us</a>
@@ -150,6 +154,9 @@
             <a href="#timetable" data-page-link="timetable" class="qlink"><span class="qlink-icon" style="background:var(--primary-dim); color:var(--primary);">🗓️</span><span>Timetable</span></a>
             <a href="#professors" data-page-link="professors" class="qlink"><span class="qlink-icon" style="background:var(--primary-dim); color:var(--primary);">⭐</span><span>Rate Professor</span></a>
             <a href="#qa" data-page-link="qa" class="qlink"><span class="qlink-icon" style="background:var(--primary-dim); color:var(--primary);">❓</span><span>Q&amp;A Board</span></a>
+            <a href="#dashboard" data-page-link="dashboard" class="qlink"><span class="qlink-icon" style="background:var(--primary-dim); color:var(--primary);">📊</span><span>Dashboard</span></a>
+            <a href="#quiz" data-page-link="quiz" class="qlink"><span class="qlink-icon" style="background:var(--primary-dim); color:var(--primary);">🧠</span><span>Daily Quiz</span></a>
+            <a href="#profile" data-page-link="profile" class="qlink"><span class="qlink-icon" style="background:var(--primary-dim); color:var(--primary);">🧑‍🎓</span><span>Profile</span></a>
             <button type="button" class="qlink" id="qlinkAIBtn" style="background:none; border:none; font-family:inherit;"><span class="qlink-icon" style="background:var(--primary-dim); color:var(--primary);">🤖</span><span>AI Doubts</span></button>
           </div>
         </div>
@@ -228,6 +235,24 @@
             <div class="card-icon">❓</div>
             <h3>Question &amp; Answer Board</h3>
             <p>Subject-wise practice questions — answer them and see what other students wrote.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="dashboard">
+            <div class="card-icon">📊</div>
+            <h3>Student Dashboard</h3>
+            <p>Your name, branch, semester and a quick progress overview in one place.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="quiz">
+            <div class="card-icon">🧠</div>
+            <h3>Daily Quiz</h3>
+            <p>5 new questions every day — earn XP, coins, and build your streak.</p>
+            <span class="hub-card-cta">Open →</span>
+          </div>
+          <div class="hub-card" data-page-link="profile">
+            <div class="card-icon">🧑‍🎓</div>
+            <h3>My Profile</h3>
+            <p>XP, coins, rank, streak and everything you've contributed.</p>
             <span class="hub-card-cta">Open →</span>
           </div>
           <div class="hub-card" data-page-link="jobs">
@@ -443,7 +468,7 @@
         <p>Browse professors across all 38 BEU-affiliated engineering colleges, rated on teaching style, viva behaviour, approachability, doubt-clearing and punctuality.</p>
       </div>
       <div class="card" style="margin-bottom:16px;">
-        <p class="muted" style="font-size:.82rem;">📌 Professors and ratings here are added entirely by students — nothing is pre-filled. Rate the teaching experience, not the person: no personal attacks, harassment or defamatory comments. Right now ratings are saved on your own device/browser only (not yet shared across everyone's devices).</p>
+        <p class="muted" id="profBackendNote" style="font-size:.82rem;">📌 Professors and ratings here are added entirely by students — nothing is pre-filled. Rate the teaching experience, not the person: no personal attacks, harassment or defamatory comments. Right now ratings are saved on your own device/browser only (not yet shared across everyone's devices).</p>
       </div>
       <div class="form-row cols-3">
         <div><label>College</label><select id="profCollege"></select></div>
@@ -468,7 +493,7 @@
         <p>Subject-wise questions posted by the BEU Hub team — answer them, discuss, and learn from other students' answers.</p>
       </div>
       <div class="card mb-16">
-        <p class="muted" style="font-size:.82rem;">📌 Questions and answers here are saved on your own device/browser only for now (not yet shared across everyone's devices).</p>
+        <p class="muted" id="qaBackendNote" style="font-size:.82rem;">📌 Questions and answers here are saved on your own device/browser only for now (not yet shared across everyone's devices).</p>
       </div>
       <div class="form-row cols-3">
         <div><label>Branch</label><select id="qaBranch"></select></div>
@@ -480,6 +505,62 @@
         <button class="btn btn-primary btn-sm" id="askQuestionBtn">+ Post a Question</button>
       </div>
       <div id="qaList" class="grid mt-16"></div>
+    </div>
+  </section>
+
+  <!-- ============ STUDENT DASHBOARD ============ -->
+  <section class="section page-section" id="dashboard">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Your space</span>
+        <h2 id="dashWelcome">Welcome! 👋</h2>
+        <p>Set your name and branch once — the rest of BEU Hub remembers it.</p>
+      </div>
+      <div class="form-row cols-3">
+        <div><label>Your name</label><input type="text" id="dashName" placeholder="e.g. Rohit Kumar"></div>
+        <div><label>Branch</label><select id="dashBranch"></select></div>
+        <div><label>Semester</label><select id="dashSem"></select></div>
+      </div>
+      <h3 class="mt-24" style="font-size:1rem;">Progress overview</h3>
+      <div class="grid grid-4 mt-16" id="dashProgressGrid"></div>
+      <div class="grid grid-4 mt-16">
+        <a class="hub-card" data-page-link="quiz" style="grid-column:span 2;">
+          <div class="card-icon">🧠</div><h3>Daily Quiz</h3>
+          <p>5 new questions today — keep your streak alive.</p>
+          <span class="hub-card-cta">Play now →</span>
+        </a>
+        <a class="hub-card" data-page-link="profile" style="grid-column:span 2;">
+          <div class="card-icon">🧑‍🎓</div><h3>Your Profile</h3>
+          <p>XP, coins, streak, rank and your contributions.</p>
+          <span class="hub-card-cta">View →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DAILY QUIZ ============ -->
+  <section class="section page-section" id="quiz">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Play daily</span>
+        <h2>Daily Quiz</h2>
+        <p>5 new questions every day — same for everyone, resets at midnight. Earn XP and coins, build your streak.</p>
+      </div>
+      <div class="quiz-stats-bar" id="quizStatsBar"></div>
+      <div id="quizContainer" class="mt-16"></div>
+      <h3 class="mt-24" style="font-size:1rem;">Leaderboard</h3>
+      <p class="muted" style="font-size:.78rem;">Set your name on the <a href="#dashboard" data-page-link="dashboard">Dashboard</a> to appear here.</p>
+      <div id="quizLeaderboard" class="mt-8"></div>
+    </div>
+  </section>
+
+  <!-- ============ STUDENT PROFILE ============ -->
+  <section class="section page-section" id="profile">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div id="profilePage"></div>
     </div>
   </section>
 
@@ -722,8 +803,19 @@
     <button data-prompt="Debug this code: for(i=0;i<10;i++) print(i)">Debug code</button>
     <button data-prompt="Give me a career roadmap for CSE branch">Roadmap</button>
   </div>
+  <div class="ai-lang-toggle" id="aiLangToggle">
+    <button type="button" class="ai-lang-btn active" data-lang="">Auto</button>
+    <button type="button" class="ai-lang-btn" data-lang="en">English</button>
+    <button type="button" class="ai-lang-btn" data-lang="hi">हिंदी</button>
+  </div>
   <div class="ai-chat-body" id="aiChatBody"></div>
+  <div class="ai-image-preview" id="aiImagePreview" style="display:none;">
+    <img id="aiImagePreviewImg" alt="Attached">
+    <button type="button" id="aiImageRemoveBtn" title="Remove image">✕</button>
+  </div>
   <div class="ai-chat-input">
+    <button class="icon-btn" id="aiImageBtn" title="Upload a photo of your question">🖼️</button>
+    <input type="file" id="aiImageInput" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;">
     <button class="icon-btn" id="aiVoiceBtn" title="Voice input">🎙️</button>
     <textarea id="aiInput" placeholder="Ask anything… (English ya Hinglish)"></textarea>
     <button class="btn btn-primary btn-sm" id="aiSendBtn">Send</button>
@@ -772,7 +864,7 @@
     </div>
     <div class="footer-bottom">
       <span>© <span id="yearNow"></span> BEU Hub — v1.0.0</span>
-      <span>Independent platform, not officially affiliated with BEU.</span>
+      <span>Independent platform, not officially affiliated with BEU. <a href="#" id="adminModeLink" style="opacity:.5; font-size:.75rem;">Admin</a></span>
     </div>
   </div>
 </footer>

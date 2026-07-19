@@ -9,7 +9,9 @@ const LS = {
   timetable:'beu_timetable', reviews:'beu_reviews', chat:'beu_ai_chat',
   premium:'beu_premium', aiEndpoint:'beu_ai_endpoint',
   professors:'beu_professors', profRatings:'beu_prof_ratings', syllabusProgress:'beu_syllabus_progress',
-  questions:'beu_questions', answers:'beu_answers'
+  questions:'beu_questions', answers:'beu_answers',
+  studentName:'beu_student_name', studentBranch:'beu_student_branch', studentSem:'beu_student_sem',
+  quizProgress:'beu_quiz_progress', adminMode:'beu_admin_mode'
 };
 
 /* If you set APP_SHARED_SECRET on your Worker (see worker.js / AI-SETUP.md),
@@ -18,6 +20,40 @@ const LS = {
    out casual bots/scrapers. Real protection is the Worker's origin lock and
    rate limits. Leave blank if you didn't set APP_SHARED_SECRET on the Worker. */
 const APP_SHARED_SECRET = '';
+
+/* ---------- Admin Mode (moderation toggle) ----------
+   IMPORTANT: this is a client-side convenience toggle, NOT real security —
+   anyone can read this passphrase via "view source". It's meant to hide
+   delete buttons from casual visitors, not to stop a determined bad actor.
+   Whether a delete actually goes through (once Firebase is connected) is
+   controlled entirely by your Firestore security rules — see the note in
+   firebase-config.js. Change this passphrase before you deploy. */
+const ADMIN_PASSPHRASE = 'beuadmin2026';
+
+function isAdminMode(){ return store.get(LS.adminMode, false); }
+function initAdminMode(){
+  const link = $('#adminModeLink');
+  if(!link) return;
+  if(isAdminMode()) link.textContent = 'Admin ✓ (click to exit)';
+  link.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if(isAdminMode()){
+      store.set(LS.adminMode, false);
+      toast('Admin mode off');
+      link.textContent = 'Admin';
+    } else {
+      const entered = prompt('Admin passphrase:');
+      if(entered === ADMIN_PASSPHRASE){
+        store.set(LS.adminMode, true);
+        toast('Admin mode on — delete buttons now show on Q&A and Professors');
+        link.textContent = 'Admin ✓ (click to exit)';
+      } else if(entered !== null){
+        toast('Wrong passphrase');
+      }
+    }
+    renderQuestionList(); renderProfessorList();
+  });
+}
 
 const $ = (sel, ctx=document) => ctx.querySelector(sel);
 const $$ = (sel, ctx=document) => [...ctx.querySelectorAll(sel)];
@@ -2384,7 +2420,7 @@ function buildBrowser(containerId, {branchSel, semSel, subjSel}, type){
 }
 
 /* Notes / Lab Manual / Practical Files / Important Books — opened from cards, same branch+sem browser */
-function openResourcePanel(type, title){
+function openResourcePanel(type, title, preset){
   const html = `
     <div class="form-row cols-2">
       <div><label>Branch</label><select id="rpBranch"></select></div>
@@ -2396,7 +2432,9 @@ function openResourcePanel(type, title){
   openPanel(html, title);
   const b = $('#rpBranch'), s = $('#rpSem');
   fillSelect(b, BRANCHES); fillSelect(s, SEMESTERS);
-  const run = ()=> renderResourceList($('#rpList'), type, b.value, s.value);
+  if(preset && preset.branch) b.value = preset.branch;
+  if(preset && preset.sem) s.value = preset.sem;
+  const run = ()=> renderResourceList($('#rpList'), type, b.value, s.value, preset && preset.subject);
   b.addEventListener('change', run); s.addEventListener('change', run);
   run();
 }
@@ -2477,6 +2515,114 @@ function openSyllabusTracker(subject){
       }
     });
   });
+}
+
+
+/* ============================== STUDENT DASHBOARD ============================== */
+function initDashboard(){
+  const nameInput = $('#dashName');
+  nameInput.value = store.get(LS.studentName, '');
+  nameInput.addEventListener('change', ()=>{
+    store.set(LS.studentName, nameInput.value.trim());
+    renderDashboard();
+  });
+  const branchSel = $('#dashBranch'), semSel = $('#dashSem');
+  fillSelect(branchSel, BRANCHES); fillSelect(semSel, SEMESTERS);
+  branchSel.value = store.get(LS.studentBranch, BRANCHES[0]);
+  semSel.value = store.get(LS.studentSem, '1');
+  branchSel.addEventListener('change', ()=>{ store.set(LS.studentBranch, branchSel.value); renderDashboard(); });
+  semSel.addEventListener('change', ()=>{ store.set(LS.studentSem, semSel.value); renderDashboard(); });
+  renderDashboard();
+}
+function renderDashboard(){
+  const name = store.get(LS.studentName, '').trim();
+  const welcome = $('#dashWelcome');
+  if(welcome) welcome.textContent = name ? `Welcome back, ${name}! 👋` : 'Welcome! Add your name below 👋';
+
+  const attData = Attendance.data();
+  const course = Attendance.course || 'btech';
+  const subs = (attData[course] && attData[course].subjects) || [];
+  const totalPresent = subs.reduce((a,s)=>a+s.present,0);
+  const totalClasses = subs.reduce((a,s)=>a+s.total,0);
+  const attPct = totalClasses ? Math.round((totalPresent/totalClasses)*100) : null;
+
+  const cgpaAll = store.get(LS.cgpa, {});
+  const entries = Object.values(cgpaAll);
+  const totalCred = entries.reduce((a,v)=>a+v.credits,0);
+  const totalW = entries.reduce((a,v)=>a+v.credits*v.sgpa,0);
+  const cgpa = totalCred ? (totalW/totalCred).toFixed(2) : null;
+
+  const syllabusProg = store.get(LS.syllabusProgress, {});
+  let doneCount = 0, totalCount = 0;
+  Object.entries(SYLLABUS_TOPICS).forEach(([subject, units])=>{
+    totalCount += units.reduce((a,u)=>a+u.topics.length,0);
+    doneCount += (syllabusProg[subject] || []).length;
+  });
+  const syllabusPct = totalCount ? Math.round((doneCount/totalCount)*100) : 0;
+
+  const qp = quizProgress();
+
+  const grid = $('#dashProgressGrid');
+  if(grid){
+    grid.innerHTML = `
+      <div class="card"><div class="card-icon">✅</div><h3>${attPct!==null ? attPct+'%' : '—'}</h3><p>Attendance</p></div>
+      <div class="card"><div class="card-icon">🎯</div><h3>${cgpa || '—'}</h3><p>CGPA</p></div>
+      <div class="card"><div class="card-icon">📋</div><h3>${syllabusPct}%</h3><p>Syllabus covered</p></div>
+      <div class="card"><div class="card-icon">⭐</div><h3>${qp.xp} XP</h3><p>${qp.streak} day streak</p></div>
+    `;
+  }
+}
+
+/* ============================== STUDENT PROFILE ============================== */
+async function initProfile(){
+  renderProfile();
+}
+async function renderProfile(){
+  const el2 = $('#profilePage');
+  if(!el2) return;
+  const name = store.get(LS.studentName, '').trim();
+  const branch = store.get(LS.studentBranch, '');
+  const sem = store.get(LS.studentSem, '');
+  const qp = quizProgress();
+
+  // Rank: position on the shared leaderboard if a name + backend is set, else "Local only"
+  let rank = '—';
+  if(name){
+    const docId = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60) || 'anonymous';
+    const all = (await DB.list('quizLeaderboard', 'beu_quiz_leaderboard_cache')).slice().sort((a,b)=> b.xp - a.xp);
+    const pos = all.findIndex(p=> p.id === docId || p.name === name);
+    if(pos >= 0) rank = `#${pos+1} of ${all.length}`;
+  }
+
+  // "Your contributions" — everything this student has actually submitted
+  // through the site's crowdsourced features (there's no file-upload system,
+  // so this tracks contributions rather than uploaded files).
+  const myProfessors = (await DB.list('professors', LS.professors)).length ? store.get(LS.professors, []).length : 0;
+  const myQuestions = store.get(LS.questions, []).length;
+  const myAnswers = store.get(LS.answers, []).length;
+  const daysPlayed = Object.keys(qp.answeredDates || {}).length;
+
+  el2.innerHTML = `
+    <div class="card text-center">
+      <div style="font-size:2.2rem;">🧑‍🎓</div>
+      <h2 style="margin:6px 0 2px;">${escapeHtml(name || 'Set your name on the Dashboard')}</h2>
+      <p class="muted">${escapeHtml(branch || 'Branch not set')}${sem ? ' · Semester '+escapeHtml(sem) : ''}</p>
+    </div>
+    <div class="grid grid-4 mt-16">
+      <div class="card"><div class="card-icon">⭐</div><h3>${qp.xp}</h3><p>XP</p></div>
+      <div class="card"><div class="card-icon">🪙</div><h3>${qp.coins}</h3><p>Coins</p></div>
+      <div class="card"><div class="card-icon">🔥</div><h3>${qp.streak}</h3><p>Day streak</p></div>
+      <div class="card"><div class="card-icon">🏆</div><h3>${rank}</h3><p>Leaderboard rank</p></div>
+    </div>
+    <h3 class="mt-24" style="font-size:1rem;">Your contributions</h3>
+    <div class="grid grid-4 mt-16">
+      <div class="card"><div class="card-icon">📝</div><h3>${myQuestions}</h3><p>Questions posted</p></div>
+      <div class="card"><div class="card-icon">💬</div><h3>${myAnswers}</h3><p>Answers written</p></div>
+      <div class="card"><div class="card-icon">👨‍🏫</div><h3>${myProfessors}</h3><p>Professors added</p></div>
+      <div class="card"><div class="card-icon">🧠</div><h3>${daysPlayed}</h3><p>Quiz days played</p></div>
+    </div>
+    <p class="muted mt-16" style="font-size:.78rem;">This device's local activity is always counted here. Leaderboard rank only updates once you've set a name on the Dashboard and played today's quiz.</p>
+  `;
 }
 
 
@@ -2748,6 +2894,213 @@ function renderReviews(){
   `).join('') || '<p class="muted">No reviews yet — be the first to share feedback!</p>';
 }
 
+/* ============================== DAILY QUIZ ==============================
+   Seed question bank — general CS/engineering fundamentals, factually
+   verified. 5 questions rotate in daily (same 5 for everyone on a given day,
+   deterministic by date so it doesn't need a backend to stay in sync).
+   Add more over time by appending to this array — nothing else needs to change. */
+const QUIZ_BANK = [
+  {q:"What is the time complexity of binary search on a sorted array of n elements?", options:["O(n)","O(log n)","O(n log n)","O(1)"], answer:1, subject:"Data Structures"},
+  {q:"Which data structure uses LIFO (Last In First Out) order?", options:["Queue","Stack","Linked List","Tree"], answer:1, subject:"Data Structures"},
+  {q:"In a binary search tree, what is the time complexity of search in the worst case?", options:["O(log n)","O(n)","O(1)","O(n^2)"], answer:1, subject:"Data Structures"},
+  {q:"Which traversal of a binary tree visits nodes in sorted order for a BST?", options:["Preorder","Postorder","Inorder","Level order"], answer:2, subject:"Data Structures"},
+  {q:"What is the worst-case time complexity of Quick Sort?", options:["O(n log n)","O(n)","O(n^2)","O(log n)"], answer:2, subject:"Data Structures"},
+  {q:"Which data structure is used to implement recursion internally?", options:["Queue","Stack","Heap","Graph"], answer:1, subject:"Data Structures"},
+  {q:"A complete binary tree with n nodes has a height of approximately:", options:["O(n)","O(log n)","O(n^2)","O(1)"], answer:1, subject:"Data Structures"},
+  {q:"Which sorting algorithm has the best average-case time complexity of O(n log n) AND is stable?", options:["Quick Sort","Heap Sort","Merge Sort","Selection Sort"], answer:2, subject:"Data Structures"},
+
+  {q:"In DBMS, which normal form eliminates transitive dependency?", options:["1NF","2NF","3NF","BCNF"], answer:2, subject:"DBMS"},
+  {q:"Which SQL clause is used to filter groups after GROUP BY?", options:["WHERE","HAVING","FILTER","ORDER BY"], answer:1, subject:"DBMS"},
+  {q:"What does ACID stand for in database transactions (the 'I')?", options:["Integrity","Isolation","Independence","Indexing"], answer:1, subject:"DBMS"},
+  {q:"Which key uniquely identifies a row and cannot be NULL?", options:["Foreign Key","Candidate Key","Primary Key","Super Key"], answer:2, subject:"DBMS"},
+  {q:"A relation is in 1NF if all attribute values are:", options:["Unique","Atomic","Foreign keys","Indexed"], answer:1, subject:"DBMS"},
+  {q:"Which type of SQL JOIN returns rows only when there is a match in both tables?", options:["LEFT JOIN","RIGHT JOIN","INNER JOIN","FULL OUTER JOIN"], answer:2, subject:"DBMS"},
+  {q:"In DBMS, a deadlock can be prevented by which technique?", options:["Indexing","Wait-Die scheme","Normalization","Denormalization"], answer:1, subject:"DBMS"},
+  {q:"Which of these is NOT one of the ACID properties?", options:["Atomicity","Consistency","Scalability","Durability"], answer:2, subject:"DBMS"},
+
+  {q:"Which OS scheduling algorithm can cause starvation of low-priority processes?", options:["Round Robin","Priority Scheduling","FCFS","SJF (non-preemptive can also, but this is the classic answer)"], answer:1, subject:"Operating System"},
+  {q:"What is a deadlock's necessary condition where a resource can only be released voluntarily?", options:["Mutual Exclusion","No Preemption","Hold and Wait","Circular Wait"], answer:1, subject:"Operating System"},
+  {q:"Which page replacement algorithm replaces the page that was least recently used?", options:["FIFO","LRU","Optimal","Random"], answer:1, subject:"Operating System"},
+  {q:"A process in 'waiting' state is waiting for:", options:["CPU allocation","Some I/O or event to complete","Memory allocation","Termination"], answer:1, subject:"Operating System"},
+  {q:"Which of these is a preemptive scheduling algorithm?", options:["FCFS","Round Robin","SJF (non-preemptive)","None of these"], answer:1, subject:"Operating System"},
+  {q:"Thrashing in an OS occurs due to:", options:["Too much CPU idle time","Excessive paging activity","Too many I/O devices","High disk space"], answer:1, subject:"Operating System"},
+  {q:"A binary semaphore can take which values?", options:["Any integer","0 and 1 only","1 to 10","Negative only"], answer:1, subject:"Operating System"},
+  {q:"Which memory management technique suffers from external fragmentation?", options:["Paging","Segmentation","Both equally","Neither"], answer:1, subject:"Operating System"},
+
+  {q:"Which layer of the OSI model is responsible for routing?", options:["Data Link Layer","Network Layer","Transport Layer","Session Layer"], answer:1, subject:"Computer Networks"},
+  {q:"Which protocol is connection-oriented and guarantees reliable delivery?", options:["UDP","TCP","IP","ICMP"], answer:1, subject:"Computer Networks"},
+  {q:"What is the default port number for HTTP?", options:["21","25","80","443"], answer:2, subject:"Computer Networks"},
+  {q:"Which device operates at the Network Layer to connect different networks?", options:["Switch","Hub","Router","Repeater"], answer:2, subject:"Computer Networks"},
+  {q:"DNS is primarily used to:", options:["Encrypt data","Translate domain names to IP addresses","Compress packets","Assign MAC addresses"], answer:1, subject:"Computer Networks"},
+  {q:"Which of these is a private IP address range?", options:["8.8.8.8","192.168.0.0/16","1.1.1.1","200.1.1.1"], answer:1, subject:"Computer Networks"},
+  {q:"In the OSI model, which layer handles encryption and compression?", options:["Presentation Layer","Session Layer","Application Layer","Transport Layer"], answer:0, subject:"Computer Networks"},
+  {q:"What does ARP stand for?", options:["Address Routing Protocol","Address Resolution Protocol","Automatic Response Protocol","Application Relay Protocol"], answer:1, subject:"Computer Networks"},
+
+  {q:"How many valence electrons does a trivalent impurity have?", options:["3","4","5","6"], answer:0, subject:"Digital Electronics"},
+  {q:"A NAND gate is equivalent to which combination?", options:["AND followed by OR","AND followed by NOT","OR followed by NOT","NOT followed by OR"], answer:1, subject:"Digital Electronics"},
+  {q:"How many flip-flops are needed to build a MOD-8 counter?", options:["2","3","4","8"], answer:1, subject:"Digital Electronics"},
+  {q:"A full adder circuit adds how many bits at once (including carry-in)?", options:["2 bits","3 bits","4 bits","1 bit"], answer:1, subject:"Digital Electronics"},
+
+  {q:"If a train 100m long travels at 36 km/h, how long does it take to cross a pole?", options:["5 seconds","10 seconds","15 seconds","20 seconds"], answer:1, subject:"Aptitude"},
+  {q:"What is the next number in the series: 2, 6, 12, 20, 30, ?", options:["36","40","42","44"], answer:2, subject:"Aptitude"},
+  {q:"If the ratio of two numbers is 3:4 and their sum is 63, what is the larger number?", options:["27","36","30","33"], answer:1, subject:"Aptitude"},
+  {q:"A can complete a work in 10 days, B in 15 days. Working together, how many days will they take?", options:["5 days","6 days","8 days","12 days"], answer:1, subject:"Aptitude"}
+];
+
+const QUIZ_DAILY_COUNT = 5;
+const QUIZ_XP_PER_CORRECT = 10;
+const QUIZ_COINS_PER_CORRECT = 2;
+const QUIZ_STREAK_BONUS_XP = 20; // bonus for completing all 5 correctly
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function daysBetween(d1, d2){ return Math.round((new Date(d2) - new Date(d1)) / 86400000); }
+
+/* Deterministic "random" pick so every visitor gets the same 5 questions on
+   the same calendar day, without needing a shared backend for the question
+   selection itself (only the leaderboard needs the shared backend). */
+function seededShuffle(arr, seed){
+  const a = arr.slice();
+  let s = seed;
+  const rand = ()=>{ s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  for(let i=a.length-1; i>0; i--){
+    const j = Math.floor(rand() * (i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function dateSeed(dateStr){
+  let h = 0;
+  for(let i=0;i<dateStr.length;i++) h = (h*31 + dateStr.charCodeAt(i)) >>> 0;
+  return h;
+}
+function todaysQuizQuestions(){
+  const date = todayStr();
+  const shuffled = seededShuffle(QUIZ_BANK, dateSeed(date));
+  return shuffled.slice(0, QUIZ_DAILY_COUNT);
+}
+
+function quizProgress(){
+  return store.get(LS.quizProgress, {xp:0, coins:0, streak:0, lastCompletedDate:null, answeredDates:{}});
+}
+function saveQuizProgress(p){ store.set(LS.quizProgress, p); }
+
+function initQuiz(){
+  renderQuiz();
+  renderQuizStatsBar();
+  renderLeaderboard();
+  $('#quizLeaderboardRefresh')?.addEventListener('click', renderLeaderboard);
+}
+
+function renderQuizStatsBar(){
+  const p = quizProgress();
+  const bar = $('#quizStatsBar');
+  if(!bar) return;
+  bar.innerHTML = `
+    <div class="quiz-stat"><span class="quiz-stat-num">${p.xp}</span><span class="quiz-stat-label">XP</span></div>
+    <div class="quiz-stat"><span class="quiz-stat-num">🪙 ${p.coins}</span><span class="quiz-stat-label">Coins</span></div>
+    <div class="quiz-stat"><span class="quiz-stat-num">🔥 ${p.streak}</span><span class="quiz-stat-label">Day streak</span></div>
+  `;
+}
+
+function renderQuiz(){
+  const container = $('#quizContainer');
+  if(!container) return;
+  const date = todayStr();
+  const p = quizProgress();
+  const todays = todaysQuizQuestions();
+  const already = p.answeredDates[date];
+
+  if(already){
+    container.innerHTML = `
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;">✅</div>
+        <h3>Today's quiz done!</h3>
+        <p class="muted">You scored ${already.correctCount}/${QUIZ_DAILY_COUNT} today. Come back tomorrow for 5 new questions.</p>
+      </div>
+      <div class="mt-16">
+        ${todays.map((q,i)=>`
+          <div class="card mt-8">
+            <p style="font-size:.9rem; font-weight:600;">${i+1}. ${escapeHtml(q.q)}</p>
+            <p class="muted" style="font-size:.8rem;">Your answer: ${escapeHtml(q.options[already.answers[i]] ?? '—')} ${already.answers[i]===q.answer ? '✅' : '❌ (correct: '+escapeHtml(q.options[q.answer])+')'}</p>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <form id="quizForm">
+      ${todays.map((q,i)=>`
+        <div class="card mt-8">
+          <p class="muted" style="font-size:.72rem;">${escapeHtml(q.subject)}</p>
+          <p style="font-size:.92rem; font-weight:600;">${i+1}. ${escapeHtml(q.q)}</p>
+          ${q.options.map((opt,oi)=>`
+            <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:.85rem; cursor:pointer;">
+              <input type="radio" name="q${i}" value="${oi}" required> ${escapeHtml(opt)}
+            </label>
+          `).join('')}
+        </div>
+      `).join('')}
+      <button type="submit" class="btn btn-primary btn-block mt-16">Submit Quiz</button>
+    </form>
+  `;
+
+  $('#quizForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const answers = todays.map((q,i)=>{
+      const picked = container.querySelector(`input[name="q${i}"]:checked`);
+      return picked ? Number(picked.value) : -1;
+    });
+    const correctCount = answers.filter((a,i)=> a === todays[i].answer).length;
+
+    const prog = quizProgress();
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    prog.streak = (prog.lastCompletedDate === yesterday) ? prog.streak + 1 : 1;
+    prog.lastCompletedDate = date;
+    prog.xp += correctCount * QUIZ_XP_PER_CORRECT + (correctCount === QUIZ_DAILY_COUNT ? QUIZ_STREAK_BONUS_XP : 0);
+    prog.coins += correctCount * QUIZ_COINS_PER_CORRECT;
+    prog.answeredDates[date] = {correctCount, answers};
+    saveQuizProgress(prog);
+
+    renderQuiz();
+    renderQuizStatsBar();
+    updateLeaderboardEntry(prog);
+    toast(`${correctCount}/${QUIZ_DAILY_COUNT} correct — +${correctCount * QUIZ_XP_PER_CORRECT} XP, +${correctCount * QUIZ_COINS_PER_CORRECT} coins! 🎉`);
+  });
+}
+
+async function updateLeaderboardEntry(prog){
+  const name = store.get(LS.studentName, '').trim();
+  if(!name) return; // no display name set yet (Dashboard) — skip leaderboard sync
+  const docId = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60) || 'anonymous';
+  await DB.setDoc('quizLeaderboard', 'beu_quiz_leaderboard_cache', docId, {
+    name, xp: prog.xp, coins: prog.coins, streak: prog.streak, date: new Date().toISOString()
+  });
+  renderLeaderboard();
+}
+
+async function renderLeaderboard(){
+  const el2 = $('#quizLeaderboard');
+  if(!el2) return;
+  el2.innerHTML = `<p class="muted" style="font-size:.82rem;">Loading leaderboard…</p>`;
+  const all = (await DB.list('quizLeaderboard', 'beu_quiz_leaderboard_cache'))
+    .slice().sort((a,b)=> b.xp - a.xp).slice(0, 20);
+  if(!all.length){
+    el2.innerHTML = `<p class="muted" style="font-size:.82rem;">No scores yet — set your name on the Dashboard and play today's quiz to appear here!</p>`;
+    return;
+  }
+  el2.innerHTML = `
+    <table class="table">
+      <thead><tr><th>#</th><th>Name</th><th>XP</th><th>🪙</th><th>🔥</th></tr></thead>
+      <tbody>
+        ${all.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${p.xp}</td><td>${p.coins}</td><td>${p.streak}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+
 /* ============================== DB (shared backend abstraction) ==============================
    Used by Rate My Professor + Q&A Board. Transparently uses Firestore when
    firebase-config.js has real keys filled in (shared across all students);
@@ -2780,6 +3133,50 @@ const DB = {
     items.push(item);
     store.set(localKey, items);
     return item;
+  },
+  /* Upsert by an explicit document id — used for the quiz leaderboard, where
+     each player's row should update in place rather than growing a new row
+     every time they play (there's no login system, so "player identity" is
+     just their chosen display name from the Dashboard). */
+  async setDoc(collectionName, localKey, docId, obj){
+    if(firebaseReady){
+      try{
+        await firestoreDB.collection(collectionName).doc(docId).set(obj, {merge:true});
+        return {id: docId, ...obj};
+      }catch(err){
+        console.error(`[DB] Firestore upsert failed for ${collectionName}/${docId}, saving locally instead:`, err);
+      }
+    }
+    const items = store.get(localKey, []);
+    const idx = items.findIndex(i=> i.id === docId);
+    if(idx >= 0) items[idx] = {...items[idx], ...obj, id:docId};
+    else items.push({id:docId, ...obj});
+    store.set(localKey, items);
+    return {id:docId, ...obj};
+  },
+  /* Used by the lightweight Admin Mode (moderation) toggle. NOTE: Admin Mode
+     is a client-side convenience toggle only — it is NOT a security boundary.
+     If Firebase is connected, whether a delete actually succeeds depends
+     entirely on your Firestore security rules. The rules recommended in
+     firebase-config.js block all deletes by default (safest option for a
+     site with no real login system); loosening them lets *anyone* delete
+     *anything*, not just people who've flipped this toggle on their own
+     device. See firebase-config.js for the tradeoffs and the proper fix
+     (Firebase Auth + admin-only rules) if you want real moderation later. */
+  async remove(collectionName, localKey, id){
+    if(firebaseReady){
+      try{
+        await firestoreDB.collection(collectionName).doc(id).delete();
+        return true;
+      }catch(err){
+        console.error(`[DB] Firestore delete failed for ${collectionName}/${id}:`, err);
+        toast('Could not delete — your Firestore rules may be blocking it (see firebase-config.js)');
+        return false;
+      }
+    }
+    const items = store.get(localKey, []);
+    store.set(localKey, items.filter(i=> i.id !== id));
+    return true;
   }
 };
 
@@ -2807,6 +3204,8 @@ function containsBannedContent(text){
   return PROF_BANNED_WORDS.some(w => lower.includes(w));
 }
 function initProfessors(){
+  const note = $('#profBackendNote');
+  if(note && firebaseReady) note.textContent = '📌 Professors and ratings here are added entirely by students — nothing is pre-filled. Rate the teaching experience, not the person: no personal attacks, harassment or defamatory comments. Ratings are shared live across every student.';
   const collegeSel = $('#profCollege');
   collegeSel.innerHTML = '<option value="">All colleges</option>' + BEU_COLLEGES.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
   const deptSel = $('#profDept');
@@ -2845,12 +3244,23 @@ async function renderProfessorList(){
         <h3 style="font-size:1rem;">${escapeHtml(p.name)}</h3>
         <p class="muted" style="font-size:.78rem;">${escapeHtml(p.dept)} · ${escapeHtml(p.college)}</p>
         <p style="font-size:1.05rem; color:var(--accent);">${stars} <span class="muted" style="font-size:.78rem;">${avg.count ? avg.overall.toFixed(1)+'/5 · '+avg.count+' rating'+(avg.count===1?'':'s') : 'No ratings yet'}</span></p>
-        <button class="btn btn-ghost btn-sm prof-detail-btn" data-id="${p.id}">Rate & view reviews</button>
+        <div class="flex gap-8">
+          <button class="btn btn-ghost btn-sm prof-detail-btn" data-id="${p.id}">Rate & view reviews</button>
+          ${isAdminMode() ? `<button class="btn btn-ghost btn-sm admin-delete-prof" data-id="${p.id}" style="color:var(--danger);">🗑️ Delete</button>` : ''}
+        </div>
       </div>
     `;
   }));
   $('#profList').innerHTML = rows.join('');
   $$('.prof-detail-btn').forEach(b=> b.addEventListener('click', ()=> openProfessorDetail(b.dataset.id)));
+  $$('.admin-delete-prof').forEach(b=> b.addEventListener('click', async ()=>{
+    if(!confirm('Delete this professor and all their ratings?')) return;
+    await DB.remove('professors', LS.professors, b.dataset.id);
+    const allRatings = await DB.list('profRatings', LS.profRatings);
+    await Promise.all(allRatings.filter(r=> r.profId === b.dataset.id).map(r=> DB.remove('profRatings', LS.profRatings, r.id)));
+    toast('Professor deleted');
+    renderProfessorList();
+  }));
 }
 function openAddProfessorForm(){
   const html = `
@@ -2970,6 +3380,8 @@ async function openProfessorDetail(profId){
    (shared across every student) once firebase-config.js is set up — see that file.
    Until then, everything here runs on localStorage on this device only. */
 function initQA(){
+  const note = $('#qaBackendNote');
+  if(note && firebaseReady) note.textContent = '📌 Questions and answers here are shared live across every student.';
   const branchSel = $('#qaBranch'), semSel = $('#qaSem');
   fillSelect(branchSel, BRANCHES); fillSelect(semSel, SEMESTERS);
   const subjSel = $('#qaSubject');
@@ -3009,11 +3421,22 @@ async function renderQuestionList(){
         <p class="muted" style="font-size:.74rem;">${escapeHtml(q.subject)} · ${escapeHtml(q.branch)} · Sem ${escapeHtml(q.sem)}</p>
         <h3 style="font-size:.95rem;">${escapeHtml(q.text)}</h3>
         <p class="muted" style="font-size:.78rem;">${count} answer${count===1?'':'s'}</p>
-        <button class="btn btn-ghost btn-sm qa-detail-btn" data-id="${q.id}">View &amp; Answer</button>
+        <div class="flex gap-8">
+          <button class="btn btn-ghost btn-sm qa-detail-btn" data-id="${q.id}">View &amp; Answer</button>
+          ${isAdminMode() ? `<button class="btn btn-ghost btn-sm admin-delete-q" data-id="${q.id}" style="color:var(--danger);">🗑️ Delete</button>` : ''}
+        </div>
       </div>
     `;
   }).join('');
   $$('.qa-detail-btn').forEach(b=> b.addEventListener('click', ()=> openQuestionDetail(b.dataset.id)));
+  $$('.admin-delete-q').forEach(b=> b.addEventListener('click', async ()=>{
+    if(!confirm('Delete this question and all its answers?')) return;
+    await DB.remove('questions', LS.questions, b.dataset.id);
+    const allA = await DB.list('answers', LS.answers);
+    await Promise.all(allA.filter(a=> a.questionId === b.dataset.id).map(a=> DB.remove('answers', LS.answers, a.id)));
+    toast('Question deleted');
+    renderQuestionList();
+  }));
 }
 function openAskQuestionForm(){
   const html = `
@@ -3062,7 +3485,10 @@ async function openQuestionDetail(qId){
   const answersHtml = answers.length ? answers.map(a=>`
     <div class="card mt-8" style="padding:12px;">
       <p style="font-size:.85rem;">${escapeHtml(a.text)}</p>
-      <p class="muted" style="font-size:.7rem;">${new Date(a.date).toLocaleDateString()}</p>
+      <div class="flex justify-between items-center">
+        <p class="muted" style="font-size:.7rem;">${new Date(a.date).toLocaleDateString()}</p>
+        ${isAdminMode() ? `<button class="btn btn-ghost btn-sm admin-delete-answer" data-id="${a.id}" style="color:var(--danger); font-size:.7rem; padding:4px 8px;">🗑️</button>` : ''}
+      </div>
     </div>
   `).join('') : '<p class="muted mt-8">No answers yet — be the first!</p>';
 
@@ -3078,6 +3504,14 @@ async function openQuestionDetail(qId){
     ${answersHtml}
   `;
   openPanel(html, 'Question');
+
+  $$('.admin-delete-answer').forEach(b=> b.addEventListener('click', async ()=>{
+    if(!confirm('Delete this answer?')) return;
+    await DB.remove('answers', LS.answers, b.dataset.id);
+    toast('Answer deleted');
+    openQuestionDetail(qId);
+    renderQuestionList();
+  }));
 
   $('#answerForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -3104,8 +3538,37 @@ const AIChat = {
     $$('.ai-quick button').forEach(b=> b.addEventListener('click', ()=>{ $('#aiInput').value = b.dataset.prompt; this.send(); }));
     $('#aiVoiceBtn').addEventListener('click', ()=> this.voiceInput());
     $('#aiClearBtn').addEventListener('click', ()=>{ this.save([]); this.render(); });
+    this.lang = '';
+    $$('.ai-lang-btn').forEach(b=> b.addEventListener('click', ()=>{
+      this.lang = b.dataset.lang;
+      $$('.ai-lang-btn').forEach(x=> x.classList.toggle('active', x===b));
+    }));
+    this.pendingImage = null;
+    $('#aiImageBtn').addEventListener('click', ()=> $('#aiImageInput').click());
+    $('#aiImageInput').addEventListener('change', (e)=> this.handleImageSelect(e));
+    $('#aiImageRemoveBtn').addEventListener('click', ()=> this.clearPendingImage());
     this.render();
     this.updateStatusDot();
+  },
+  handleImageSelect(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const MAX_BYTES = 4 * 1024 * 1024;
+    if(file.size > MAX_BYTES){ toast('Image too large — please pick one under 4MB'); e.target.value=''; return; }
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const dataUrl = reader.result;
+      this.pendingImage = { mediaType: file.type, data: dataUrl.split(',')[1], dataUrl };
+      $('#aiImagePreviewImg').src = dataUrl;
+      $('#aiImagePreview').style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  },
+  clearPendingImage(){
+    this.pendingImage = null;
+    $('#aiImagePreview').style.display = 'none';
+    $('#aiImageInput').value = '';
   },
   toggle(open){
     $('#aiChatWindow').classList.toggle('open', open);
@@ -3165,14 +3628,16 @@ const AIChat = {
     const h = this.history();
     const connected = !!store.get(LS.aiEndpoint,'');
     body.innerHTML = h.map((m,i)=>`
-      <div class="msg ${m.role}">${escapeHtml(m.text)}
+      <div class="msg ${m.role}">
+        ${m.image ? `<img src="${m.image}" style="max-width:160px; border-radius:10px; display:block; margin-bottom:${m.text?'6px':'0'};" alt="Attached question">` : ''}
+        ${escapeHtml(m.text)}
         ${m.role==='ai' ? `<div class="msg-actions">
           <button onclick="AIChat.copy(${i})">Copy</button>
           <button onclick="AIChat.share(${i})">Share</button>
           <button onclick="AIChat.downloadPDF(${i})">Download PDF</button>
         </div>` : ''}
       </div>
-    `).join('') || `<div class="msg ai">Hey! I'm GenZ AI Tutor 👋 Ask me to explain a topic, make notes/MCQs, debug code, or plan a roadmap. Hinglish is fine too!${connected ? '' : ' <br><br>⚠️ Not connected to an AI backend yet — tap ⚙️ above to set one up (takes 5 min, free).'}</div>`;
+    `).join('') || `<div class="msg ai">Hey! I'm GenZ AI Tutor 👋 Ask me to explain a topic, make notes/MCQs, debug code, or plan a roadmap. You can also upload a photo of a question, or switch replies to Hindi with the toggle above.${connected ? '' : ' <br><br>⚠️ Not connected to an AI backend yet — tap ⚙️ above to set one up (takes 5 min, free).'}</div>`;
     body.scrollTop = body.scrollHeight;
   },
   copy(i){ navigator.clipboard.writeText(this.history()[i].text); toast('Copied'); },
@@ -3202,11 +3667,13 @@ const AIChat = {
   async send(){
     const input = $('#aiInput');
     const text = input.value.trim();
-    if(!text) return;
+    const image = this.pendingImage;
+    if(!text && !image) return;
     const h = this.history();
-    h.push({role:'user', text});
+    h.push({role:'user', text, image: image ? image.dataUrl : null});
     this.save(h); this.render();
     input.value='';
+    this.clearPendingImage();
 
     // typing indicator
     const body = $('#aiChatBody');
@@ -3214,23 +3681,26 @@ const AIChat = {
     typing.className = 'msg ai'; typing.id = 'aiTyping'; typing.textContent = 'Thinking…';
     body.appendChild(typing); body.scrollTop = body.scrollHeight;
 
-    const reply = await this.getReply(text, h.slice(0,-1));
+    const reply = await this.getReply(text || 'Please help me with what is shown in this image.', h.slice(0,-1), image);
     document.getElementById('aiTyping')?.remove();
 
     const h2 = this.history();
     h2.push({role:'ai', text:reply});
     this.save(h2); this.render();
   },
-  async getReply(prompt, historyBeforeThis){
+  async getReply(prompt, historyBeforeThis, image){
     const endpoint = store.get(LS.aiEndpoint, '');
     if(!endpoint){
-      return `I'm not connected to an AI backend yet. Tap the ⚙️ icon above to set one up — it's free and takes about 5 minutes (deploy the included Cloudflare Worker, paste its URL in). Once connected I can explain topics, write notes, generate MCQs, debug code, summarize PDFs and build roadmaps — in English or Hinglish.`;
+      return `I'm not connected to an AI backend yet. Tap the ⚙️ icon above to set one up — it's free and takes about 5 minutes (deploy the included Cloudflare Worker, paste its URL in). Once connected I can explain topics, write notes, generate MCQs, debug code, summarize PDFs, read a photo of a question, and build roadmaps — in English or Hindi.`;
     }
     try{
+      const payload = { prompt, history: historyBeforeThis.slice(-10) };
+      if(this.lang) payload.lang = this.lang;
+      if(image) payload.image = { mediaType: image.mediaType, data: image.data };
       const res = await fetch(endpoint, {
         method:'POST',
         headers:{'Content-Type':'application/json', ...(APP_SHARED_SECRET ? {'X-App-Secret': APP_SHARED_SECRET} : {})},
-        body: JSON.stringify({ prompt, history: historyBeforeThis.slice(-10) })
+        body: JSON.stringify(payload)
       });
       if(!res.ok){
         const errData = await res.json().catch(()=>({}));
@@ -3789,6 +4259,27 @@ function wireGame(id){
 }
 
 /* ============================== SEARCH ============================== */
+/* Used by Smart Search results to deep-link into the right resource UI:
+   pyq/syllabus live as inline browsers on the Resources page; notes/lab/
+   practical/books open via the popup panel (openResourcePanel). */
+function openSubjectResource(type, branch, sem, subject){
+  if(type === 'pyq' || type === 'syllabus'){
+    showPage('resources');
+    requestAnimationFrame(()=>{
+      const b = document.getElementById(type+'Branch'), s = document.getElementById(type+'Sem'), sub = document.getElementById(type+'Subject');
+      if(!b) return;
+      b.value = branch; s.value = sem;
+      buildBrowser(type+'Results', {branchSel:b, semSel:s, subjSel:sub}, type);
+      if(sub){ fillSelect(sub, ['All', ...subjectsFor(Number(sem), branch)]); if([...sub.options].some(o=>o.value===subject)) sub.value = subject; }
+      buildBrowser(type+'Results', {branchSel:b, semSel:s, subjSel:sub}, type);
+      document.getElementById(type+'Branch').closest('.card')?.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  } else {
+    const titles = {notes:'Notes', lab:'Lab Manual', practical:'Practical Files', books:'Important Books'};
+    openResourcePanel(type, titles[type] || type, {branch, sem, subject});
+  }
+}
+
 function buildSearchIndex(){
   const idx = [];
   TOOLS.forEach(t=> idx.push({label:t.name, type:'Tool', action:()=>openTool(t.id)}));
@@ -3797,6 +4288,25 @@ function buildSearchIndex(){
   EDU_WEBSITES.forEach(w=> idx.push({label:w.name, type:'Website', action:()=>openEmbed(w.site, w.name)}));
   BLOGS.forEach(b=> idx.push({label:b.title, type:'Blog', action:()=>openBlogDetail(b.title)}));
   STUDENT_HELP.forEach(h=> idx.push({label:h.name, type:'Student Help', action:()=>openHelpDetail(h.name)}));
+
+  // Notes / PYQs / Syllabus — every branch__sem__subject entry that has a file
+  const resourceTypeLabels = {pyq:'PYQ', notes:'Notes', syllabus:'Syllabus', lab:'Lab Manual', practical:'Practical', books:'Book'};
+  Object.entries(RESOURCE_FILES).forEach(([type, files])=>{
+    Object.keys(files).forEach(key=>{
+      const [branch, sem, subject] = key.split('__');
+      idx.push({
+        label: `${subject} (${branch}, Sem ${sem})`,
+        type: resourceTypeLabels[type] || type,
+        action: ()=> openSubjectResource(type, branch, sem, subject)
+      });
+    });
+  });
+
+  // Q&A Board questions
+  DB.list('questions', LS.questions).then(qs=>{
+    qs.forEach(q=> idx.push({label:q.text, type:'Question', action:()=> { showPage('qa'); openQuestionDetail(q.id); }}));
+  }).catch(()=>{});
+
   return idx;
 }
 function initSearch(){
@@ -3895,6 +4405,7 @@ function showPage(id, opts={}){
   target.classList.add('active');
   updateActiveNav(targetPageId);
   updateAiFabVisibility(targetPageId);
+  refreshPageOnEntry(targetPageId);
 
   if(pushHash && location.hash.replace('#','') !== id){
     history.pushState(null, '', '#'+id);
@@ -3905,6 +4416,15 @@ function showPage(id, opts={}){
   } else {
     window.scrollTo({top:0, behavior:'smooth'});
   }
+}
+
+/* Some pages show data that can go stale if it's only rendered once at load
+   (e.g. Profile depends on the name set on the Dashboard, which could have
+   changed since). Re-render those specific pages every time you navigate in. */
+function refreshPageOnEntry(pageId){
+  if(pageId === 'dashboard') renderDashboard();
+  if(pageId === 'quiz'){ renderQuiz(); renderQuizStatsBar(); renderLeaderboard(); }
+  if(pageId === 'profile') renderProfile();
 }
 
 /* The floating AI button is hidden on the homepage — the hero already has
@@ -3932,7 +4452,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initRouter();
   initialRoute();
   renderJobs(); renderEdu(); renderSocials(); renderHelp(); renderBlogs(); renderTools(); renderGames(); renderMentorSection();
-  initAttendance(); initCGPA(); initTimetable(); initReviews(); initProfessors(); initQA();
+  initAttendance(); initCGPA(); initTimetable(); initReviews(); initProfessors(); initQA(); initDashboard(); initQuiz(); initProfile(); initAdminMode();
   AIChat.init();
   initSearch();
   initPWA();
