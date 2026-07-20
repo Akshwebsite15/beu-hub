@@ -62,6 +62,7 @@
       <input type="text" class="global-search" placeholder="Search anything...">
     </div>
     <div class="nav-actions">
+      <button class="icon-btn" id="notifBellBtn" title="Notifications" style="position:relative;">🔔<span id="notifDot" style="display:none; position:absolute; top:4px; right:4px; width:8px; height:8px; background:var(--danger); border-radius:50%;"></span></button>
       <button class="icon-btn theme-toggle" title="Toggle theme"><span class="theme-icon">🌙</span></button>
       <button class="icon-btn hamburger" id="hamburgerBtn" title="Menu">☰</button>
     </div>
@@ -82,6 +83,11 @@
     <a href="#professors" data-page-link="professors">Rate My Professor</a>
     <a href="#qa" data-page-link="qa">Question &amp; Answer Board</a>
     <a href="#quiz" data-page-link="quiz">🧠 Daily Quiz</a>
+    <a href="#aptitude" data-page-link="aptitude">🔢 Daily Aptitude</a>
+    <a href="#coding-challenge" data-page-link="coding-challenge">💻 Coding Challenge</a>
+    <a href="#word-of-day" data-page-link="word-of-day">📖 Word of the Day</a>
+    <a href="#study-planner" data-page-link="study-planner">🗓️ AI Study Planner</a>
+    <a href="#forum" data-page-link="forum">💬 Discussion Forum</a>
     <a href="#profile" data-page-link="profile">🧑‍🎓 My Profile</a>
     <a href="#jobs" data-page-link="jobs">Government Jobs</a>
     <a href="#edu" data-page-link="edu">Educational Websites</a>
@@ -502,17 +508,54 @@
         <div><label>Branch</label><select id="dashBranch"></select></div>
         <div><label>Semester</label><select id="dashSem"></select></div>
       </div>
+
+      <div class="quiz-stats-bar mt-24" id="dashGameBar"></div>
+      <button class="btn btn-accent btn-block mt-16" id="dashContinueBtn" style="display:none;"></button>
+
       <h3 class="mt-24" style="font-size:1rem;">Progress overview</h3>
       <div class="grid grid-4 mt-16" id="dashProgressGrid"></div>
+
+      <div class="grid grid-2 mt-24" style="gap:16px;">
+        <div class="card">
+          <h3 style="font-size:.95rem;">Today's Tasks</h3>
+          <div id="dashTasksList" class="mt-8"></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:.95rem;">Upcoming Exams</h3>
+          <div id="dashExamsList" class="mt-8"></div>
+          <div class="form-row cols-2 mt-16">
+            <input type="text" id="dashExamName" placeholder="Exam name">
+            <input type="date" id="dashExamDate">
+          </div>
+          <button class="btn btn-ghost btn-sm mt-8" id="dashAddExamBtn">+ Add Exam</button>
+        </div>
+      </div>
+
+      <div class="card mt-24">
+        <h3 style="font-size:.95rem;">Recent Activity</h3>
+        <div id="dashActivityList" class="mt-8"></div>
+      </div>
+
+      <h3 class="mt-24" style="font-size:1rem;">Quick access</h3>
       <div class="grid grid-4 mt-16">
-        <a class="hub-card" data-page-link="quiz" style="grid-column:span 2;">
+        <a class="hub-card" data-page-link="quiz">
           <div class="card-icon">🧠</div><h3>Daily Quiz</h3>
-          <p>5 new questions today — keep your streak alive.</p>
+          <p>5 new questions today.</p>
           <span class="hub-card-cta">Play now →</span>
         </a>
-        <a class="hub-card" data-page-link="profile" style="grid-column:span 2;">
+        <a class="hub-card" data-page-link="aptitude">
+          <div class="card-icon">🔢</div><h3>Daily Aptitude</h3>
+          <p>One question a day.</p>
+          <span class="hub-card-cta">Attempt →</span>
+        </a>
+        <a class="hub-card" data-page-link="coding-challenge">
+          <div class="card-icon">💻</div><h3>Coding Challenge</h3>
+          <p>One problem a day.</p>
+          <span class="hub-card-cta">Solve →</span>
+        </a>
+        <a class="hub-card" data-page-link="profile">
           <div class="card-icon">🧑‍🎓</div><h3>Your Profile</h3>
-          <p>XP, coins, streak, rank and your contributions.</p>
+          <p>XP, coins, streak, rank.</p>
           <span class="hub-card-cta">View →</span>
         </a>
       </div>
@@ -533,6 +576,88 @@
       <h3 class="mt-24" style="font-size:1rem;">Leaderboard</h3>
       <p class="muted" style="font-size:.78rem;">Set your name on the <a href="#dashboard" data-page-link="dashboard">Dashboard</a> to appear here.</p>
       <div id="quizLeaderboard" class="mt-8"></div>
+    </div>
+  </section>
+
+  <!-- ============ DAILY APTITUDE ============ -->
+  <section class="section page-section" id="aptitude">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Sharpen up daily</span>
+        <h2>Daily Aptitude</h2>
+        <p>One placement-style question a day — Quant, Reasoning, English, Data Interpretation or Logical Reasoning.</p>
+      </div>
+      <div id="aptitudeContainer"></div>
+    </div>
+  </section>
+
+  <!-- ============ WORD OF THE DAY ============ -->
+  <section class="section page-section" id="word-of-day">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Build your vocabulary</span>
+        <h2>Word of the Day</h2>
+        <p>A useful word for interviews and everyday English — meaning, Hindi meaning, pronunciation and example.</p>
+      </div>
+      <div id="wordContainer"></div>
+    </div>
+  </section>
+
+  <!-- ============ DAILY CODING CHALLENGE ============ -->
+  <section class="section page-section" id="coding-challenge">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Code daily</span>
+        <h2>Daily Coding Challenge</h2>
+        <p>One problem a day in C, C++, Java or Python. Runs on a free public code-execution service — write your solution and hit Run &amp; Submit.</p>
+      </div>
+      <div id="codingContainer"></div>
+    </div>
+  </section>
+
+  <!-- ============ AI STUDY PLANNER ============ -->
+  <section class="section page-section" id="study-planner">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Plan smarter</span>
+        <h2>AI Study Planner</h2>
+        <p>Tell it your subjects, exam date and available hours — it generates a daily, weekly and revision plan.</p>
+      </div>
+      <div class="form-row cols-2">
+        <div><label>Branch</label><select id="spBranch"></select></div>
+        <div><label>Semester</label><select id="spSem"></select></div>
+      </div>
+      <div class="form-row mt-8">
+        <label>Subjects to prepare</label>
+        <div id="spSubjects"></div>
+      </div>
+      <div class="form-row cols-2 mt-8">
+        <div><label>Exam date</label><input type="date" id="spExamDate"></div>
+        <div><label>Study hours/day</label><input type="number" id="spHours" min="1" max="12" value="2"></div>
+      </div>
+      <button class="btn btn-primary btn-block mt-16" id="spGenerateBtn">Generate My Plan</button>
+      <div id="spOutput"></div>
+    </div>
+  </section>
+
+  <!-- ============ DISCUSSION FORUM ============ -->
+  <section class="section page-section" id="forum">
+    <div class="container">
+      <a href="#home" data-page-link="home" class="back-home-link">← Back to Home</a>
+      <div class="section-head">
+        <span class="eyebrow">Talk it out</span>
+        <h2>Student Community</h2>
+        <p>Ask doubts, share resources, discuss anything — text only for now (no image uploads yet).</p>
+      </div>
+      <div class="flex justify-between items-center gap-8" style="flex-wrap:wrap;">
+        <input type="text" id="forumSearch" placeholder="Search discussions..." style="flex:1; min-width:200px;">
+        <button class="btn btn-primary btn-sm" id="forumNewPostBtn">+ New Post</button>
+      </div>
+      <div id="forumList" class="mt-16"></div>
     </div>
   </section>
 

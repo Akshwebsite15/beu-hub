@@ -11,7 +11,8 @@ const LS = {
   professors:'beu_professors', profRatings:'beu_prof_ratings', syllabusProgress:'beu_syllabus_progress',
   questions:'beu_questions', answers:'beu_answers',
   studentName:'beu_student_name', studentBranch:'beu_student_branch', studentSem:'beu_student_sem',
-  quizProgress:'beu_quiz_progress', adminMode:'beu_admin_mode'
+  quizProgress:'beu_quiz_progress', adminMode:'beu_admin_mode',
+  lastResource:'beu_last_resource', exams:'beu_exams'
 };
 
 /* If you set APP_SHARED_SECRET on your Worker (see worker.js / AI-SETUP.md),
@@ -2402,12 +2403,20 @@ function renderResourceList(container, type, branch, sem, onlySubject){
       <div class="flex gap-8" style="flex-wrap:wrap; justify-content:flex-end;">
         ${hasTracker ? `<button class="btn btn-ghost btn-sm tracker-open-btn" data-subject="${escapeHtml(s)}">📋 Tracker</button>` : ''}
         ${url
-          ? `<a class="btn btn-primary btn-sm" href="${url}" target="_blank" rel="noopener noreferrer">View</a>`
+          ? `<a class="btn btn-primary btn-sm ${type==='notes' ? 'notes-view-link' : ''}" data-subject="${escapeHtml(s)}" href="${url}" target="_blank" rel="noopener noreferrer">View</a>`
           : `<span class="tag" style="white-space:nowrap">Not uploaded yet</span>`}
       </div>
     </div>`;
   }).join('');
   $$('.tracker-open-btn', container).forEach(b=> b.addEventListener('click', ()=> openSyllabusTracker(b.dataset.subject)));
+  $$('.notes-view-link', container).forEach(a=> a.addEventListener('click', ()=>{
+    const key = 'notesRead_' + todayStr() + '_' + a.dataset.subject;
+    if(!store.get(key, false)){
+      store.set(key, true);
+      awardActivity('readNotes', `Read notes: ${a.dataset.subject}`);
+    }
+    store.set(LS.lastResource, {type, branch, sem, subject: a.dataset.subject});
+  }));
 }
 function buildBrowser(containerId, {branchSel, semSel, subjSel}, type){
   const branch = branchSel.value, sem = semSel.value;
@@ -2532,12 +2541,23 @@ function initDashboard(){
   semSel.value = store.get(LS.studentSem, '1');
   branchSel.addEventListener('change', ()=>{ store.set(LS.studentBranch, branchSel.value); renderDashboard(); });
   semSel.addEventListener('change', ()=>{ store.set(LS.studentSem, semSel.value); renderDashboard(); });
+  $('#dashAddExamBtn')?.addEventListener('click', ()=>{
+    const name = $('#dashExamName').value.trim();
+    const date = $('#dashExamDate').value;
+    if(!name || !date){ toast('Enter both exam name and date'); return; }
+    const exams = store.get(LS.exams, []);
+    exams.push({id:'exam_'+Date.now(), name, date});
+    store.set(LS.exams, exams);
+    $('#dashExamName').value = ''; $('#dashExamDate').value = '';
+    renderDashboard();
+    toast('Exam added');
+  });
   renderDashboard();
 }
 function renderDashboard(){
   const name = store.get(LS.studentName, '').trim();
   const welcome = $('#dashWelcome');
-  if(welcome) welcome.textContent = name ? `Welcome back, ${name}! 👋` : 'Welcome! Add your name below 👋';
+  if(welcome) welcome.textContent = name ? `Good day, ${name}! 👋` : 'Welcome! Add your name below 👋';
 
   const attData = Attendance.data();
   const course = Attendance.course || 'btech';
@@ -2568,8 +2588,77 @@ function renderDashboard(){
       <div class="card"><div class="card-icon">✅</div><h3>${attPct!==null ? attPct+'%' : '—'}</h3><p>Attendance</p></div>
       <div class="card"><div class="card-icon">🎯</div><h3>${cgpa || '—'}</h3><p>CGPA</p></div>
       <div class="card"><div class="card-icon">📋</div><h3>${syllabusPct}%</h3><p>Syllabus covered</p></div>
-      <div class="card"><div class="card-icon">⭐</div><h3>${qp.xp} XP</h3><p>${qp.streak} day streak</p></div>
+      <div class="card"><div class="card-icon">⭐</div><h3>${qp.xp} XP</h3><p>${qp.streak} quiz-day streak</p></div>
     `;
+  }
+
+  // ---- Gamification stat bar: streak / coins / XP / level ----
+  const p = progress();
+  const level = levelFromXP(p.xp);
+  const intoLevel = xpIntoLevel(p.xp);
+  const gameBar = $('#dashGameBar');
+  if(gameBar){
+    gameBar.innerHTML = `
+      <div class="quiz-stat"><span class="quiz-stat-num">🔥 ${p.loginStreak}</span><span class="quiz-stat-label">Login streak</span></div>
+      <div class="quiz-stat"><span class="quiz-stat-num">🪙 ${p.coins}</span><span class="quiz-stat-label">Coins</span></div>
+      <div class="quiz-stat"><span class="quiz-stat-num">${p.xp}</span><span class="quiz-stat-label">XP</span></div>
+      <div class="quiz-stat"><span class="quiz-stat-num">Lv ${level}</span><span class="quiz-stat-label">${intoLevel}/${LEVEL_XP_STEP} to next</span></div>
+    `;
+  }
+
+  // ---- Today's Tasks ----
+  const today = todayStr();
+  const tasks = [
+    {label:'Play today\'s Daily Quiz', done: !!p.answeredDates[today], link:'quiz'},
+    {label:'Learn today\'s Word of the Day', done: !!p.wordsLearned[today], link:'word-of-day'},
+    {label:'Attempt today\'s Aptitude question', done: !!p.aptitudeDates[today], link:'aptitude'},
+    {label:'Try today\'s Coding Challenge', done: !!p.codingHistory[today], link:'coding-challenge'},
+  ];
+  const tasksList = $('#dashTasksList');
+  if(tasksList){
+    tasksList.innerHTML = tasks.map(t=>`
+      <div class="flex justify-between items-center" style="padding:8px 0; border-bottom:1px solid var(--border);">
+        <span style="font-size:.85rem;">${t.done ? '✅' : '⬜'} ${escapeHtml(t.label)}</span>
+        ${!t.done ? `<a href="#${t.link}" data-page-link="${t.link}" class="btn btn-ghost btn-sm">Go →</a>` : ''}
+      </div>
+    `).join('');
+  }
+
+  // ---- Upcoming Exams ----
+  const exams = store.get(LS.exams, []).filter(e=> new Date(e.date) >= new Date(today)).sort((a,b)=> new Date(a.date)-new Date(b.date));
+  const examsList = $('#dashExamsList');
+  if(examsList){
+    examsList.innerHTML = exams.length ? exams.slice(0,5).map(e=>{
+      const daysLeft = Math.max(0, daysBetween(today, e.date));
+      return `<div class="flex justify-between items-center" style="padding:6px 0;">
+        <span style="font-size:.85rem;">${escapeHtml(e.name)}</span>
+        <span class="tag">${daysLeft===0 ? 'Today' : daysLeft+' day'+(daysLeft===1?'':'s')}</span>
+      </div>`;
+    }).join('') : '<p class="muted" style="font-size:.8rem;">No upcoming exams added yet.</p>';
+  }
+
+  // ---- Recent Activity ----
+  const activityList = $('#dashActivityList');
+  if(activityList){
+    activityList.innerHTML = p.activityLog.length ? p.activityLog.slice(0,8).map(a=>`
+      <div class="flex justify-between items-center" style="padding:6px 0; font-size:.8rem;">
+        <span>${escapeHtml(a.label)}</span>
+        <span class="muted">+${a.xp} XP</span>
+      </div>
+    `).join('') : '<p class="muted" style="font-size:.8rem;">No activity yet — play today\'s quiz or read some notes!</p>';
+  }
+
+  // ---- Continue Learning ----
+  const lastRes = store.get(LS.lastResource, null);
+  const continueBtn = $('#dashContinueBtn');
+  if(continueBtn){
+    if(lastRes){
+      continueBtn.style.display = '';
+      continueBtn.textContent = `Continue: ${lastRes.subject} →`;
+      continueBtn.onclick = ()=> openSubjectResource(lastRes.type, lastRes.branch, lastRes.sem, lastRes.subject);
+    } else {
+      continueBtn.style.display = 'none';
+    }
   }
 }
 
@@ -2602,17 +2691,33 @@ async function renderProfile(){
   const myAnswers = store.get(LS.answers, []).length;
   const daysPlayed = Object.keys(qp.answeredDates || {}).length;
 
+  const p = progress();
+  const level = levelFromXP(p.xp);
+  const badges = earnedBadges(p);
+
   el2.innerHTML = `
     <div class="card text-center">
       <div style="font-size:2.2rem;">🧑‍🎓</div>
       <h2 style="margin:6px 0 2px;">${escapeHtml(name || 'Set your name on the Dashboard')}</h2>
       <p class="muted">${escapeHtml(branch || 'Branch not set')}${sem ? ' · Semester '+escapeHtml(sem) : ''}</p>
+      <p class="mt-8" style="font-weight:700; color:var(--primary);">Level ${level}</p>
     </div>
     <div class="grid grid-4 mt-16">
-      <div class="card"><div class="card-icon">⭐</div><h3>${qp.xp}</h3><p>XP</p></div>
-      <div class="card"><div class="card-icon">🪙</div><h3>${qp.coins}</h3><p>Coins</p></div>
-      <div class="card"><div class="card-icon">🔥</div><h3>${qp.streak}</h3><p>Day streak</p></div>
+      <div class="card"><div class="card-icon">⭐</div><h3>${p.xp}</h3><p>XP</p></div>
+      <div class="card"><div class="card-icon">🪙</div><h3>${p.coins}</h3><p>Coins</p></div>
+      <div class="card"><div class="card-icon">🔥</div><h3>${p.loginStreak}</h3><p>Login streak</p></div>
       <div class="card"><div class="card-icon">🏆</div><h3>${rank}</h3><p>Leaderboard rank</p></div>
+    </div>
+    <h3 class="mt-24" style="font-size:1rem;">Achievement Badges</h3>
+    <div class="grid grid-4 mt-16">
+      ${BADGE_DEFS.map(b=>{
+        const earned = badges.some(x=> x.key === b.key);
+        return `<div class="card" style="text-align:center; opacity:${earned?1:.35};">
+          <div style="font-size:1.6rem;">${b.icon}</div>
+          <p style="font-size:.78rem; font-weight:600; margin-top:6px;">${escapeHtml(b.label)}</p>
+          ${earned ? '<p class="muted" style="font-size:.68rem;">Earned ✓</p>' : '<p class="muted" style="font-size:.68rem;">Locked</p>'}
+        </div>`;
+      }).join('')}
     </div>
     <h3 class="mt-24" style="font-size:1rem;">Your contributions</h3>
     <div class="grid grid-4 mt-16">
@@ -2947,6 +3052,209 @@ const QUIZ_BANK = [
   {q:"A can complete a work in 10 days, B in 15 days. Working together, how many days will they take?", options:["5 days","6 days","8 days","12 days"], answer:1, subject:"Aptitude"}
 ];
 
+/* ============================== DAILY APTITUDE ============================== */
+const APTITUDE_BANK = [
+  {q:"A sum of money doubles itself in 8 years at simple interest. What is the rate of interest?", options:["10%","12.5%","15%","8%"], answer:1, topic:"Quant"},
+  {q:"The average of 5 consecutive numbers is 30. What is the largest number?", options:["30","31","32","33"], answer:2, topic:"Quant"},
+  {q:"A shopkeeper marks an item 40% above cost price and gives a 10% discount. What is his profit percentage?", options:["24%","26%","30%","36%"], answer:2, topic:"Quant"},
+  {q:"If 20 men can build a wall in 15 days, how many days will 25 men take?", options:["10 days","12 days","14 days","18 days"], answer:1, topic:"Quant"},
+  {q:"What is the compound interest on ₹10,000 for 2 years at 10% per annum?", options:["₹2,000","₹2,100","₹2,200","₹2,500"], answer:1, topic:"Quant"},
+
+  {q:"Look at this series: 7, 10, 8, 11, 9, 12, ? What number comes next?", options:["9","10","12","13"], answer:1, topic:"Reasoning"},
+  {q:"Pointing to a photograph, a man says, 'She is the daughter of my grandfather's only son.' How is the woman related to the man?", options:["Mother","Sister","Aunt","Wife"], answer:1, topic:"Reasoning"},
+  {q:"In a certain code, 'COMPUTER' is written as 'RFUVQNPC'. How is 'MEDICINE' written in that code?", options:["EOJDJEFM","NFEJDJOE","MFEJDJOE","NFEJDJNE"], answer:1, topic:"Reasoning"},
+  {q:"If South-East becomes North, North-East becomes West, then what will West become?", options:["North-East","North-West","South-East","South"], answer:2, topic:"Reasoning"},
+  {q:"Find the odd one out: Triangle, Square, Circle, Cube", options:["Triangle","Square","Circle","Cube"], answer:3, topic:"Reasoning"},
+
+  {q:"Choose the correctly spelled word.", options:["Recieve","Receive","Receeve","Receve"], answer:1, topic:"English"},
+  {q:"Choose the synonym of 'Ephemeral'.", options:["Permanent","Short-lived","Ancient","Colorful"], answer:1, topic:"English"},
+  {q:"Choose the antonym of 'Benevolent'.", options:["Kind","Generous","Malevolent","Charitable"], answer:2, topic:"English"},
+  {q:"Fill in the blank: She has been working here ___ 2019.", options:["for","since","from","at"], answer:1, topic:"English"},
+  {q:"Identify the correctly punctuated sentence.", options:["Its a beautiful day.","It's a beautiful day.","Its' a beautiful day.","It is a beautiful, day."], answer:1, topic:"English"},
+
+  {q:"A company's revenue grew from ₹50 lakh to ₹65 lakh in one year. What was the percentage growth?", options:["25%","28%","30%","32%"], answer:2, topic:"Data Interpretation"},
+  {q:"If a pie chart shows 90° for a category out of 360° total, what percentage does it represent?", options:["20%","25%","30%","35%"], answer:1, topic:"Data Interpretation"},
+  {q:"A bar chart shows sales of 120, 150, 90, 180 units over 4 months. What is the average monthly sale?", options:["130","135","140","145"], answer:2, topic:"Data Interpretation"},
+
+  {q:"All roses are flowers. Some flowers fade quickly. Which conclusion is valid?", options:["All roses fade quickly","Some flowers are roses","No valid conclusion follows","All flowers are roses"], answer:2, topic:"Logical Reasoning"},
+  {q:"If all Bloops are Razzies and all Razzies are Lazzies, are all Bloops definitely Lazzies?", options:["Yes","No","Cannot be determined","Only some Bloops"], answer:0, topic:"Logical Reasoning"},
+];
+const APTITUDE_DAILY_COUNT = 1;
+function todaysAptitudeQuestion(){
+  const date = todayStr();
+  const shuffled = seededShuffle(APTITUDE_BANK, dateSeed(date + '_apt'));
+  return shuffled[0];
+}
+
+/* ============================== WORD OF THE DAY ============================== */
+const WORD_BANK = [
+  {word:"Ubiquitous", pronunciation:"yoo-BIK-wi-tuhs", meaning:"Present, appearing, or found everywhere.", hindiMeaning:"सर्वव्यापी", example:"Smartphones have become ubiquitous in modern life.", synonyms:["Omnipresent","Widespread","Pervasive"], interviewUsage:"\"In today's ubiquitous digital landscape, cybersecurity has become a top priority.\""},
+  {word:"Meticulous", pronunciation:"mi-TIK-yuh-luhs", meaning:"Showing great attention to detail; very careful and precise.", hindiMeaning:"बारीकी से काम करने वाला", example:"She is meticulous about checking her code before submission.", synonyms:["Thorough","Precise","Careful"], interviewUsage:"\"I'm meticulous about testing edge cases before deploying any feature.\""},
+  {word:"Resilient", pronunciation:"ri-ZIL-yuhnt", meaning:"Able to withstand or recover quickly from difficult conditions.", hindiMeaning:"लचीला / दृढ़", example:"A resilient system continues to function even after a server fails.", synonyms:["Tough","Adaptable","Hardy"], interviewUsage:"\"I stay resilient under pressure, especially during tight project deadlines.\""},
+  {word:"Pragmatic", pronunciation:"prag-MAT-ik", meaning:"Dealing with things sensibly and realistically.", hindiMeaning:"व्यावहारिक", example:"We need a pragmatic approach to solve this scaling issue.", synonyms:["Practical","Realistic","Sensible"], interviewUsage:"\"My approach to problem-solving is pragmatic — I focus on what actually works.\""},
+  {word:"Ambiguous", pronunciation:"am-BIG-yoo-uhs", meaning:"Open to more than one interpretation; not clear or decided.", hindiMeaning:"अस्पष्ट / द्विअर्थी", example:"The requirements were ambiguous, so we asked the client for clarification.", synonyms:["Unclear","Vague","Uncertain"], interviewUsage:"\"When requirements are ambiguous, I always clarify with stakeholders first.\""},
+  {word:"Redundant", pronunciation:"ri-DUHN-duhnt", meaning:"Not or no longer needed; superfluous. In engineering, a backup component.", hindiMeaning:"अनावश्यक / फालतू", example:"We added a redundant server to prevent downtime if one fails.", synonyms:["Superfluous","Unnecessary","Excess"], interviewUsage:"\"We built redundant systems so a single point of failure won't crash the app.\""},
+  {word:"Scalable", pronunciation:"SKAY-luh-buhl", meaning:"Able to be changed in size or scale, especially expanded to handle growth.", hindiMeaning:"मापनीय / विस्तार योग्य", example:"We chose a scalable cloud architecture to handle future user growth.", synonyms:["Expandable","Flexible","Adaptable"], interviewUsage:"\"I designed the backend to be scalable so it can handle 10x more traffic.\""},
+  {word:"Diligent", pronunciation:"DIL-i-juhnt", meaning:"Showing careful and persistent effort in work or duties.", hindiMeaning:"मेहनती / परिश्रमी", example:"He was diligent in reviewing every line of the pull request.", synonyms:["Hardworking","Industrious","Conscientious"], interviewUsage:"\"I'm a diligent worker who double-checks every deliverable before submission.\""},
+  {word:"Consensus", pronunciation:"kuhn-SEN-suhs", meaning:"General agreement among a group of people.", hindiMeaning:"सर्वसम्मति", example:"The team reached a consensus on which framework to use.", synonyms:["Agreement","Accord","Unanimity"], interviewUsage:"\"I try to build consensus before making major technical decisions.\""},
+  {word:"Feasible", pronunciation:"FEE-zuh-buhl", meaning:"Possible to do easily or conveniently; achievable.", hindiMeaning:"व्यवहार्य / संभव", example:"Is it feasible to complete this feature within one sprint?", synonyms:["Achievable","Possible","Viable"], interviewUsage:"\"I first check if a solution is technically feasible before committing to a timeline.\""},
+];
+function todaysWord(){
+  const date = todayStr();
+  const shuffled = seededShuffle(WORD_BANK, dateSeed(date + '_word'));
+  return shuffled[0];
+}
+
+/* ============================== DAILY CODING CHALLENGE ==============================
+   Each problem is self-contained (no stdin needed) — the program should just
+   print the exact expected output. Runs on the free public Piston API
+   (https://github.com/engineer-man/piston) via emkc.org, so it works without
+   you needing to host any code-execution backend yourself. Since it's a free
+   third-party service, it can occasionally be slow/rate-limited — that's a
+   real tradeoff of not running your own judge infrastructure. */
+const CODING_BANK = [
+  {
+    title:"Sum of Two Numbers", difficulty:"Easy",
+    description:"Write a program that prints the sum of 5 and 7.",
+    expected:"12",
+    starter:{
+      python:"# Print the sum of 5 and 7\nprint(5 + 7)",
+      c:"#include <stdio.h>\nint main(){\n    printf(\"%d\", 5 + 7);\n    return 0;\n}",
+      cpp:"#include <iostream>\nusing namespace std;\nint main(){\n    cout << 5 + 7;\n    return 0;\n}",
+      java:"public class Main {\n    public static void main(String[] args) {\n        System.out.print(5 + 7);\n    }\n}"
+    },
+    editorial:"Just add the two numbers and print the result — the simplest possible program, useful for checking your setup works."
+  },
+  {
+    title:"Factorial of 5", difficulty:"Easy",
+    description:"Write a program that computes and prints the factorial of 5 (5! = 5×4×3×2×1).",
+    expected:"120",
+    starter:{
+      python:"n = 5\nfact = 1\nfor i in range(1, n+1):\n    fact *= i\nprint(fact)",
+      c:"#include <stdio.h>\nint main(){\n    int n = 5, fact = 1;\n    for(int i=1;i<=n;i++) fact *= i;\n    printf(\"%d\", fact);\n    return 0;\n}",
+      cpp:"#include <iostream>\nusing namespace std;\nint main(){\n    int n = 5, fact = 1;\n    for(int i=1;i<=n;i++) fact *= i;\n    cout << fact;\n    return 0;\n}",
+      java:"public class Main {\n    public static void main(String[] args) {\n        int n = 5, fact = 1;\n        for(int i=1;i<=n;i++) fact *= i;\n        System.out.print(fact);\n    }\n}"
+    },
+    editorial:"Multiply numbers from 1 to n in a loop. 5! = 5×4×3×2×1 = 120."
+  },
+  {
+    title:"Check Prime", difficulty:"Easy",
+    description:"Write a program that checks if 29 is prime, and prints \"Yes\" if it is prime or \"No\" if it isn't.",
+    expected:"Yes",
+    starter:{
+      python:"n = 29\nis_prime = n > 1\nfor i in range(2, int(n**0.5)+1):\n    if n % i == 0:\n        is_prime = False\n        break\nprint(\"Yes\" if is_prime else \"No\")",
+      c:"#include <stdio.h>\n#include <math.h>\nint main(){\n    int n = 29, isPrime = n > 1;\n    for(int i=2;i<=sqrt(n);i++){\n        if(n % i == 0){ isPrime = 0; break; }\n    }\n    printf(isPrime ? \"Yes\" : \"No\");\n    return 0;\n}",
+      cpp:"#include <iostream>\n#include <cmath>\nusing namespace std;\nint main(){\n    int n = 29; bool isPrime = n > 1;\n    for(int i=2;i<=sqrt(n);i++){\n        if(n % i == 0){ isPrime = false; break; }\n    }\n    cout << (isPrime ? \"Yes\" : \"No\");\n    return 0;\n}",
+      java:"public class Main {\n    public static void main(String[] args) {\n        int n = 29; boolean isPrime = n > 1;\n        for(int i=2;i<=Math.sqrt(n);i++){\n            if(n % i == 0){ isPrime = false; break; }\n        }\n        System.out.print(isPrime ? \"Yes\" : \"No\");\n    }\n}"
+    },
+    editorial:"Check divisibility only up to √n — if nothing divides evenly, it's prime. 29 has no divisors other than 1 and itself, so it's prime."
+  },
+  {
+    title:"Reverse a String", difficulty:"Easy",
+    description:"Write a program that prints the reverse of the string \"hello\".",
+    expected:"olleh",
+    starter:{
+      python:"s = \"hello\"\nprint(s[::-1])",
+      c:"#include <stdio.h>\n#include <string.h>\nint main(){\n    char s[] = \"hello\";\n    int len = strlen(s);\n    for(int i=len-1;i>=0;i--) printf(\"%c\", s[i]);\n    return 0;\n}",
+      cpp:"#include <iostream>\n#include <algorithm>\nusing namespace std;\nint main(){\n    string s = \"hello\";\n    reverse(s.begin(), s.end());\n    cout << s;\n    return 0;\n}",
+      java:"public class Main {\n    public static void main(String[] args) {\n        String s = \"hello\";\n        System.out.print(new StringBuilder(s).reverse().toString());\n    }\n}"
+    },
+    editorial:"Most languages have a built-in way to reverse a sequence — Python slicing [::-1], C++ std::reverse, or Java's StringBuilder.reverse()."
+  },
+  {
+    title:"Fibonacci Sequence", difficulty:"Medium",
+    description:"Write a program that prints the first 10 Fibonacci numbers, space-separated, starting from 0 and 1 (e.g. \"0 1 1 2 ...\").",
+    expected:"0 1 1 2 3 5 8 13 21 34",
+    starter:{
+      python:"a, b = 0, 1\nresult = []\nfor _ in range(10):\n    result.append(str(a))\n    a, b = b, a + b\nprint(\" \".join(result))",
+      c:"#include <stdio.h>\nint main(){\n    long a=0, b=1, t;\n    for(int i=0;i<10;i++){\n        printf(\"%ld\", a);\n        if(i<9) printf(\" \");\n        t = a + b; a = b; b = t;\n    }\n    return 0;\n}",
+      cpp:"#include <iostream>\nusing namespace std;\nint main(){\n    long a=0, b=1, t;\n    for(int i=0;i<10;i++){\n        cout << a;\n        if(i<9) cout << \" \";\n        t = a + b; a = b; b = t;\n    }\n    return 0;\n}",
+      java:"public class Main {\n    public static void main(String[] args) {\n        long a=0, b=1, t;\n        for(int i=0;i<10;i++){\n            System.out.print(a);\n            if(i<9) System.out.print(\" \");\n            t = a + b; a = b; b = t;\n        }\n    }\n}"
+    },
+    editorial:"Keep two running variables (a, b) and repeatedly compute the next term as their sum — classic O(n) Fibonacci without recursion."
+  },
+  {
+    title:"GCD of Two Numbers", difficulty:"Medium",
+    description:"Write a program that prints the GCD (greatest common divisor) of 48 and 18.",
+    expected:"6",
+    starter:{
+      python:"a, b = 48, 18\nwhile b:\n    a, b = b, a % b\nprint(a)",
+      c:"#include <stdio.h>\nint main(){\n    int a = 48, b = 18, t;\n    while(b){ t = b; b = a % b; a = t; }\n    printf(\"%d\", a);\n    return 0;\n}",
+      cpp:"#include <iostream>\nusing namespace std;\nint main(){\n    int a = 48, b = 18, t;\n    while(b){ t = b; b = a % b; a = t; }\n    cout << a;\n    return 0;\n}",
+      java:"public class Main {\n    public static void main(String[] args) {\n        int a = 48, b = 18, t;\n        while(b != 0){ t = b; b = a % b; a = t; }\n        System.out.print(a);\n    }\n}"
+    },
+    editorial:"This is the Euclidean algorithm: repeatedly replace (a,b) with (b, a mod b) until b becomes 0. GCD(48,18)=6."
+  },
+  {
+    title:"Palindrome Check", difficulty:"Medium",
+    description:"Write a program that checks if \"madam\" is a palindrome and prints \"Yes\" or \"No\".",
+    expected:"Yes",
+    starter:{
+      python:"s = \"madam\"\nprint(\"Yes\" if s == s[::-1] else \"No\")",
+      c:"#include <stdio.h>\n#include <string.h>\nint main(){\n    char s[] = \"madam\";\n    int len = strlen(s), isPal = 1;\n    for(int i=0;i<len/2;i++){\n        if(s[i] != s[len-1-i]){ isPal = 0; break; }\n    }\n    printf(isPal ? \"Yes\" : \"No\");\n    return 0;\n}",
+      cpp:"#include <iostream>\n#include <algorithm>\nusing namespace std;\nint main(){\n    string s = \"madam\", r = s;\n    reverse(r.begin(), r.end());\n    cout << (s == r ? \"Yes\" : \"No\");\n    return 0;\n}",
+      java:"public class Main {\n    public static void main(String[] args) {\n        String s = \"madam\";\n        String r = new StringBuilder(s).reverse().toString();\n        System.out.print(s.equals(r) ? \"Yes\" : \"No\");\n    }\n}"
+    },
+    editorial:"Compare the string to its own reverse — if they match, it reads the same forwards and backwards."
+  },
+  {
+    title:"Binary Search", difficulty:"Hard",
+    description:"Given the sorted array [1, 3, 5, 7, 9, 11], write a program that finds the index of 7 using binary search and prints that index (0-based).",
+    expected:"3",
+    starter:{
+      python:"arr = [1, 3, 5, 7, 9, 11]\ntarget = 7\nlo, hi = 0, len(arr)-1\nresult = -1\nwhile lo <= hi:\n    mid = (lo + hi) // 2\n    if arr[mid] == target:\n        result = mid\n        break\n    elif arr[mid] < target:\n        lo = mid + 1\n    else:\n        hi = mid - 1\nprint(result)",
+      c:"#include <stdio.h>\nint main(){\n    int arr[] = {1,3,5,7,9,11};\n    int target = 7, lo = 0, hi = 5, result = -1;\n    while(lo <= hi){\n        int mid = (lo + hi) / 2;\n        if(arr[mid] == target){ result = mid; break; }\n        else if(arr[mid] < target) lo = mid + 1;\n        else hi = mid - 1;\n    }\n    printf(\"%d\", result);\n    return 0;\n}",
+      cpp:"#include <iostream>\nusing namespace std;\nint main(){\n    int arr[] = {1,3,5,7,9,11};\n    int target = 7, lo = 0, hi = 5, result = -1;\n    while(lo <= hi){\n        int mid = (lo + hi) / 2;\n        if(arr[mid] == target){ result = mid; break; }\n        else if(arr[mid] < target) lo = mid + 1;\n        else hi = mid - 1;\n    }\n    cout << result;\n    return 0;\n}",
+      java:"public class Main {\n    public static void main(String[] args) {\n        int[] arr = {1,3,5,7,9,11};\n        int target = 7, lo = 0, hi = 5, result = -1;\n        while(lo <= hi){\n            int mid = (lo + hi) / 2;\n            if(arr[mid] == target){ result = mid; break; }\n            else if(arr[mid] < target) lo = mid + 1;\n            else hi = mid - 1;\n        }\n        System.out.print(result);\n    }\n}"
+    },
+    editorial:"Binary search halves the search space each step by comparing the middle element to the target. 7 sits at index 3 in [1,3,5,7,9,11]."
+  }
+];
+
+const PISTON_LANG_MAP = {
+  python:{language:'python', aliases:['python3','python']},
+  c:{language:'c', aliases:['c']},
+  cpp:{language:'cpp', aliases:['c++','cpp']},
+  java:{language:'java', aliases:['java']}
+};
+const PISTON_FILENAME = {python:'main.py', c:'main.c', cpp:'main.cpp', java:'Main.java'};
+
+function todaysCodingProblem(){
+  const date = todayStr();
+  const shuffled = seededShuffle(CODING_BANK, dateSeed(date + '_code'));
+  return shuffled[0];
+}
+
+let pistonRuntimesCache = null;
+async function getPistonVersion(lang){
+  try{
+    if(!pistonRuntimesCache){
+      const res = await fetch('https://emkc.org/api/v2/piston/runtimes');
+      pistonRuntimesCache = await res.json();
+    }
+    const match = pistonRuntimesCache.find(r=> r.language === PISTON_LANG_MAP[lang].language || (r.aliases||[]).includes(lang));
+    return match ? match.version : '*';
+  }catch(err){
+    console.error('[Piston] Could not fetch runtimes, defaulting to *:', err);
+    return '*';
+  }
+}
+async function runCode(lang, code){
+  const version = await getPistonVersion(lang);
+  const res = await fetch('https://emkc.org/api/v2/piston/execute', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      language: PISTON_LANG_MAP[lang].language,
+      version,
+      files: [{name: PISTON_FILENAME[lang], content: code}]
+    })
+  });
+  if(!res.ok) throw new Error('Piston API error: ' + res.status);
+  return res.json();
+}
+
+
 const QUIZ_DAILY_COUNT = 5;
 const QUIZ_XP_PER_CORRECT = 10;
 const QUIZ_COINS_PER_CORRECT = 2;
@@ -2983,6 +3291,79 @@ function quizProgress(){
   return store.get(LS.quizProgress, {xp:0, coins:0, streak:0, lastCompletedDate:null, answeredDates:{}});
 }
 function saveQuizProgress(p){ store.set(LS.quizProgress, p); }
+
+/* ============================== GENERAL PROGRESS SYSTEM ==============================
+   XP / coins / login streak / level / badges / recent activity — shared across
+   Daily Quiz, Daily Aptitude, Coding Challenge, Notes, AI Study Session, etc.
+   Builds on the same LS.quizProgress store so existing quiz streak/XP data
+   carries over rather than resetting. */
+const XP_TABLE = {
+  readNotes: 5, quiz: 20, uploadNotes: 50, dailyLogin: 10,
+  codingChallenge: 30, aiStudySession: 15, aptitude: 15, wordOfDay: 5
+};
+const COIN_TABLE = {
+  readNotes: 1, quiz: 2, uploadNotes: 10, dailyLogin: 2,
+  codingChallenge: 5, aiStudySession: 3, aptitude: 3, wordOfDay: 1
+};
+const LEVEL_XP_STEP = 100; // 100 XP per level
+
+function levelFromXP(xp){ return Math.floor(xp / LEVEL_XP_STEP) + 1; }
+function xpIntoLevel(xp){ return xp % LEVEL_XP_STEP; }
+
+function progress(){
+  const p = quizProgress();
+  if(p.loginStreak === undefined) p.loginStreak = 0;
+  if(p.longestLoginStreak === undefined) p.longestLoginStreak = 0;
+  if(!p.activityLog) p.activityLog = [];
+  if(!p.codingHistory) p.codingHistory = {};
+  if(!p.aptitudeDates) p.aptitudeDates = {};
+  if(!p.wordsLearned) p.wordsLearned = {};
+  if(p.lastLoginDate === undefined) p.lastLoginDate = null;
+  return p;
+}
+function saveProgress(p){ saveQuizProgress(p); }
+
+/* Central place every activity awards XP/coins through, so the activity feed
+   and totals always stay consistent. `type` must be a key in XP_TABLE. */
+function awardActivity(type, label){
+  const p = progress();
+  const xp = XP_TABLE[type] || 0;
+  const coins = COIN_TABLE[type] || 0;
+  p.xp += xp;
+  p.coins += coins;
+  p.activityLog.unshift({type, label, xp, coins, date: new Date().toISOString()});
+  p.activityLog = p.activityLog.slice(0, 30);
+  saveProgress(p);
+  return {xp, coins};
+}
+
+/* Called once per page load. Awards Daily Login XP once per calendar day and
+   keeps a login streak (kept as its own `loginStreak` field, separate from
+   the existing quiz-completion `streak` field so neither system stomps on
+   the other). */
+function updateLoginStreak(){
+  const p = progress();
+  const today = todayStr();
+  if(p.lastLoginDate === today) return; // already counted today
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+  p.loginStreak = (p.lastLoginDate === yesterday) ? p.loginStreak + 1 : 1;
+  p.longestLoginStreak = Math.max(p.longestLoginStreak || 0, p.loginStreak);
+  p.lastLoginDate = today;
+  saveProgress(p);
+  awardActivity('dailyLogin', 'Daily login bonus');
+}
+
+const BADGE_DEFS = [
+  {key:'streak7', label:'7 Day Streak', icon:'🔥', check: p=> (p.longestLoginStreak||0) >= 7},
+  {key:'streak30', label:'30 Day Streak', icon:'🔥', check: p=> (p.longestLoginStreak||0) >= 30},
+  {key:'streak100', label:'Century Streak', icon:'💯', check: p=> (p.longestLoginStreak||0) >= 100},
+  {key:'quizmaster', label:'Quiz Master', icon:'🧠', check: p=> Object.keys(p.answeredDates||{}).length >= 10},
+  {key:'codingexpert', label:'Coding Expert', icon:'💻', check: p=> Object.keys(p.codingHistory||{}).length >= 5},
+  {key:'wordsmith', label:'Wordsmith', icon:'📖', check: p=> Object.keys(p.wordsLearned||{}).length >= 10},
+  {key:'level5', label:'Level 5 Reached', icon:'⭐', check: p=> levelFromXP(p.xp) >= 5},
+  {key:'level10', label:'Level 10 Reached', icon:'🌟', check: p=> levelFromXP(p.xp) >= 10},
+];
+function earnedBadges(p){ return BADGE_DEFS.filter(b=> b.check(p)); }
 
 function initQuiz(){
   renderQuiz();
@@ -3100,6 +3481,377 @@ async function renderLeaderboard(){
   `;
 }
 
+/* ============================== DAILY APTITUDE PAGE ============================== */
+function initAptitude(){ renderAptitude(); }
+function renderAptitude(){
+  const container = $('#aptitudeContainer');
+  if(!container) return;
+  const date = todayStr();
+  const p = progress();
+  const q = todaysAptitudeQuestion();
+  const already = p.aptitudeDates[date];
+
+  if(already){
+    const correct = already.answer === q.answer;
+    container.innerHTML = `
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;">${correct ? '✅' : '📖'}</div>
+        <h3>Today's aptitude question done!</h3>
+        <p class="muted">${correct ? 'Correct! Great job.' : 'Not quite — check the right answer below.'} Come back tomorrow for a new one.</p>
+      </div>
+      <div class="card mt-16">
+        <p class="muted" style="font-size:.72rem;">${escapeHtml(q.topic)}</p>
+        <p style="font-weight:600;">${escapeHtml(q.q)}</p>
+        <p class="muted mt-8" style="font-size:.85rem;">Your answer: ${escapeHtml(q.options[already.answer] ?? '—')} ${correct ? '✅' : '❌ (correct: '+escapeHtml(q.options[q.answer])+')'}</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <form id="aptitudeForm">
+      <div class="card">
+        <p class="muted" style="font-size:.72rem;">${escapeHtml(q.topic)}</p>
+        <p style="font-weight:600; font-size:.95rem;">${escapeHtml(q.q)}</p>
+        ${q.options.map((opt,oi)=>`
+          <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:.85rem; cursor:pointer;">
+            <input type="radio" name="apt" value="${oi}" required> ${escapeHtml(opt)}
+          </label>
+        `).join('')}
+      </div>
+      <button type="submit" class="btn btn-primary btn-block mt-16">Submit Answer</button>
+    </form>
+  `;
+  $('#aptitudeForm').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const picked = container.querySelector('input[name="apt"]:checked');
+    const answer = picked ? Number(picked.value) : -1;
+    const correct = answer === q.answer;
+    const prog = progress();
+    prog.aptitudeDates[date] = {answer, topic:q.topic};
+    saveProgress(prog);
+    awardActivity('aptitude', `Aptitude (${q.topic})`);
+    renderAptitude();
+    toast(correct ? 'Correct! 🎉' : `Not quite — the right answer was "${q.options[q.answer]}"`);
+  });
+}
+
+/* ============================== WORD OF THE DAY PAGE ============================== */
+function initWordOfDay(){ renderWordOfDay(); }
+function renderWordOfDay(){
+  const container = $('#wordContainer');
+  if(!container) return;
+  const date = todayStr();
+  const p = progress();
+  const w = todaysWord();
+  const learned = !!p.wordsLearned[date];
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="flex justify-between items-center">
+        <h2 style="margin:0;">${escapeHtml(w.word)}</h2>
+        <button class="icon-btn" id="wordSpeakBtn" title="Hear pronunciation">🔊</button>
+      </div>
+      <p class="muted" style="font-size:.85rem;">/${escapeHtml(w.pronunciation)}/</p>
+      <p class="mt-16"><b>Meaning:</b> ${escapeHtml(w.meaning)}</p>
+      <p><b>Hindi:</b> ${escapeHtml(w.hindiMeaning)}</p>
+      <p class="mt-8"><b>Example:</b> <i>${escapeHtml(w.example)}</i></p>
+      <p class="mt-8"><b>Synonyms:</b> ${w.synonyms.map(escapeHtml).join(', ')}</p>
+      <p class="mt-8"><b>Interview usage:</b> ${escapeHtml(w.interviewUsage)}</p>
+      ${learned
+        ? `<p class="mt-16" style="color:var(--success); font-weight:600;">✅ Learned today!</p>`
+        : `<button class="btn btn-primary btn-block mt-16" id="wordLearnedBtn">Mark as Learned (+${XP_TABLE.wordOfDay} XP)</button>`}
+    </div>
+  `;
+  $('#wordSpeakBtn')?.addEventListener('click', ()=>{
+    if(!('speechSynthesis' in window)){ toast('Voice playback not supported in this browser'); return; }
+    const u = new SpeechSynthesisUtterance(w.word);
+    u.lang = 'en-US';
+    speechSynthesis.speak(u);
+  });
+  $('#wordLearnedBtn')?.addEventListener('click', ()=>{
+    const prog = progress();
+    prog.wordsLearned[date] = w.word;
+    saveProgress(prog);
+    awardActivity('wordOfDay', `Learned word: ${w.word}`);
+    renderWordOfDay();
+    toast('Nice! +' + XP_TABLE.wordOfDay + ' XP 🎉');
+  });
+}
+
+/* ============================== CODING CHALLENGE PAGE ============================== */
+function initCodingChallenge(){ renderCodingChallenge(); }
+function renderCodingChallenge(){
+  const container = $('#codingContainer');
+  if(!container) return;
+  const date = todayStr();
+  const p = progress();
+  const problem = todaysCodingProblem();
+  const already = p.codingHistory[date];
+  const lang = (already && already.lang) || 'python';
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="flex justify-between items-center">
+        <h3 style="margin:0;">${escapeHtml(problem.title)}</h3>
+        <span class="tag">${escapeHtml(problem.difficulty)}</span>
+      </div>
+      <p class="mt-8">${escapeHtml(problem.description)}</p>
+    </div>
+    <div class="form-row mt-16">
+      <label>Language</label>
+      <select id="codeLang">
+        <option value="python">Python</option>
+        <option value="c">C</option>
+        <option value="cpp">C++</option>
+        <option value="java">Java</option>
+      </select>
+    </div>
+    <textarea id="codeEditor" rows="14" style="width:100%; font-family:var(--font-mono, monospace); font-size:.85rem; margin-top:8px;" spellcheck="false"></textarea>
+    <div class="flex gap-8 mt-16">
+      <button class="btn btn-primary" id="codeRunBtn">▶ Run &amp; Submit</button>
+      ${already ? `<span class="tag" style="align-self:center;">${already.passed ? '✅ Solved today' : '📝 Attempted today'}</span>` : ''}
+    </div>
+    <div id="codeOutput" class="mt-16"></div>
+    ${already ? `<div class="card mt-16"><h3 style="font-size:.9rem;">Editorial</h3><p class="mt-8" style="font-size:.85rem;">${escapeHtml(problem.editorial)}</p></div>` : ''}
+  `;
+
+  const langSel = $('#codeLang');
+  langSel.value = lang;
+  const editor = $('#codeEditor');
+  editor.value = (already && already.code) || problem.starter[langSel.value];
+  langSel.addEventListener('change', ()=>{
+    editor.value = problem.starter[langSel.value];
+  });
+
+  $('#codeRunBtn').addEventListener('click', async ()=>{
+    const btn = $('#codeRunBtn');
+    btn.disabled = true; btn.textContent = 'Running…';
+    $('#codeOutput').innerHTML = `<p class="muted">Compiling and running on Piston (public code-execution API)…</p>`;
+    try{
+      const result = await runCode(langSel.value, editor.value);
+      const stdout = (result.run && result.run.stdout) || '';
+      const stderr = (result.run && result.run.stderr) || result.compile?.stderr || '';
+      const passed = stdout.trim() === problem.expected.trim();
+
+      $('#codeOutput').innerHTML = `
+        <div class="card">
+          <p style="font-size:.8rem; font-weight:600;">Output:</p>
+          <pre style="white-space:pre-wrap; font-size:.82rem; background:var(--surface-2); padding:10px; border-radius:8px;">${escapeHtml(stdout || '(no output)')}</pre>
+          ${stderr ? `<p style="font-size:.8rem; font-weight:600; color:var(--danger);" class="mt-8">Errors:</p><pre style="white-space:pre-wrap; font-size:.78rem; background:var(--surface-2); padding:10px; border-radius:8px; color:var(--danger);">${escapeHtml(stderr)}</pre>` : ''}
+          <p class="mt-8" style="font-weight:700; color:${passed ? 'var(--success)' : 'var(--danger)'};">${passed ? '✅ Correct! Expected output matched.' : '❌ Not quite — expected: '+escapeHtml(problem.expected)}</p>
+        </div>
+      `;
+
+      const prog = progress();
+      const isFirstSubmitToday = !prog.codingHistory[date];
+      prog.codingHistory[date] = {lang: langSel.value, code: editor.value, passed, title: problem.title};
+      saveProgress(prog);
+      if(isFirstSubmitToday) awardActivity('codingChallenge', `Coding: ${problem.title}`);
+      renderCodingChallenge();
+    }catch(err){
+      console.error(err);
+      $('#codeOutput').innerHTML = `<p style="color:var(--danger);">Couldn't reach the code execution service (Piston API) — check your internet connection and try again. If this keeps happening, the free public API may be temporarily down.</p>`;
+    }finally{
+      btn.disabled = false; btn.textContent = '▶ Run & Submit';
+    }
+  });
+}
+
+/* ============================== NOTIFICATION CENTER ==============================
+   In-app reminders only — there's no push-notification backend (Web Push
+   needs a server to trigger it), so this shows a computed list of "things
+   you might want to do today" whenever you open the site, rather than
+   alerting you outside the tab. */
+function computeNotifications(){
+  const p = progress();
+  const today = todayStr();
+  const notifs = [];
+  if(!p.answeredDates[today]) notifs.push({icon:'🧠', text:"Today's Daily Quiz is waiting", link:'quiz'});
+  if(!p.wordsLearned[today]) notifs.push({icon:'📖', text:"Learn today's Word of the Day", link:'word-of-day'});
+  if(!p.aptitudeDates[today]) notifs.push({icon:'🔢', text:"Try today's Aptitude question", link:'aptitude'});
+  if(!p.codingHistory[today]) notifs.push({icon:'💻', text:"Solve today's Coding Challenge", link:'coding-challenge'});
+  const exams = store.get(LS.exams, []).filter(e=> new Date(e.date) >= new Date(today));
+  exams.forEach(e=>{
+    const daysLeft = daysBetween(today, e.date);
+    if(daysLeft <= 3) notifs.push({icon:'📅', text:`${e.name} is in ${daysLeft===0?'today':daysLeft+' day'+(daysLeft===1?'':'s')}!`, link:'dashboard'});
+  });
+  return notifs;
+}
+function initNotifications(){
+  const btn = $('#notifBellBtn');
+  if(!btn) return;
+  const refreshDot = ()=>{
+    const notifs = computeNotifications();
+    $('#notifDot').style.display = notifs.length ? 'block' : 'none';
+  };
+  refreshDot();
+  btn.addEventListener('click', ()=>{
+    const notifs = computeNotifications();
+    const html = notifs.length
+      ? notifs.map(n=>`
+          <a href="#${n.link}" data-page-link="${n.link}" class="card mt-8" style="display:flex; align-items:center; gap:10px; text-decoration:none;" onclick="closePanel()">
+            <span style="font-size:1.3rem;">${n.icon}</span>
+            <span style="font-size:.85rem; color:var(--text);">${escapeHtml(n.text)}</span>
+          </a>
+        `).join('')
+      : '<p class="muted">You\'re all caught up! 🎉</p>';
+    openPanel(html, 'Notifications');
+  });
+}
+
+/* ============================== DISCUSSION FORUM ==============================
+   Lightweight text-only forum (no image uploads — this site has no file
+   storage backend). Posts, likes and comments are shared via Firestore once
+   configured (see firebase-config.js), otherwise local-only like everything
+   else on this site without a backend. */
+function initForum(){
+  $('#forumNewPostBtn').addEventListener('click', openNewPostForm);
+  $('#forumSearch').addEventListener('input', renderForum);
+  renderForum();
+}
+async function renderForum(){
+  const search = ($('#forumSearch').value || '').trim().toLowerCase();
+  let posts = await DB.list('forumPosts', 'beu_forum_posts');
+  if(search) posts = posts.filter(p=> p.text.toLowerCase().includes(search) || (p.subject||'').toLowerCase().includes(search));
+  const el2 = $('#forumList');
+  if(!posts.length){
+    el2.innerHTML = `<p class="muted">No posts yet — start the conversation!</p>`;
+    return;
+  }
+  el2.innerHTML = posts.map(post=>`
+    <div class="card mt-8">
+      <p class="muted" style="font-size:.72rem;">${post.anonymous ? 'Anonymous' : escapeHtml(post.author||'Student')}${post.subject ? ' · '+escapeHtml(post.subject) : ''} · ${new Date(post.date).toLocaleDateString()}</p>
+      <p class="mt-8" style="font-size:.9rem;">${escapeHtml(post.text)}</p>
+      <div class="flex gap-8 mt-8">
+        <button class="btn btn-ghost btn-sm forum-like-btn" data-id="${post.id}">👍 ${post.likes||0}</button>
+        <button class="btn btn-ghost btn-sm forum-comment-btn" data-id="${post.id}">💬 Comments</button>
+        <button class="btn btn-ghost btn-sm" onclick="navigator.share ? navigator.share({title:'BEU Hub Discussion', text:${JSON.stringify(post.text)}}) : (navigator.clipboard.writeText(${JSON.stringify(post.text)}), toast('Copied to clipboard'))">↗ Share</button>
+        ${isAdminMode() ? `<button class="btn btn-ghost btn-sm admin-delete-post" data-id="${post.id}" style="color:var(--danger);">🗑️</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+  $$('.forum-like-btn').forEach(b=> b.addEventListener('click', async ()=>{
+    const posts2 = await DB.list('forumPosts', 'beu_forum_posts');
+    const post = posts2.find(p=> p.id === b.dataset.id);
+    if(!post) return;
+    await DB.setDoc('forumPosts', 'beu_forum_posts', post.id, {...post, likes:(post.likes||0)+1});
+    renderForum();
+  }));
+  $$('.forum-comment-btn').forEach(b=> b.addEventListener('click', ()=> openForumPostDetail(b.dataset.id)));
+  $$('.admin-delete-post').forEach(b=> b.addEventListener('click', async ()=>{
+    if(!confirm('Delete this post?')) return;
+    await DB.remove('forumPosts', 'beu_forum_posts', b.dataset.id);
+    toast('Post deleted');
+    renderForum();
+  }));
+}
+function openNewPostForm(){
+  const html = `
+    <form id="newPostForm">
+      <div class="form-row">
+        <label>Subject tag (optional)</label>
+        <input type="text" id="npSubject" placeholder="e.g. Data Structures">
+      </div>
+      <div class="form-row mt-8">
+        <label>What's on your mind?</label>
+        <textarea id="npText" rows="4" required placeholder="Ask a doubt, share a resource, start a discussion..."></textarea>
+      </div>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-size:.85rem;">
+        <input type="checkbox" id="npAnonymous"> Post anonymously
+      </label>
+      <p class="muted mt-8" style="font-size:.76rem;">Be respectful — no personal attacks, harassment or defamatory content.</p>
+      <button type="submit" class="btn btn-primary btn-block mt-16">Post</button>
+    </form>
+  `;
+  openPanel(html, 'New Discussion');
+  $('#newPostForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const text = $('#npText').value.trim();
+    if(!text){ toast('Write something first'); return; }
+    if(containsBannedContent(text)){ toast('Please keep it respectful'); return; }
+    await DB.add('forumPosts', 'beu_forum_posts', {
+      text, subject: $('#npSubject').value.trim(),
+      anonymous: $('#npAnonymous').checked,
+      author: store.get(LS.studentName, '').trim() || 'Student',
+      likes: 0, date: new Date().toISOString()
+    });
+    closePanel();
+    renderForum();
+    toast('Posted!');
+  });
+}
+async function openForumPostDetail(postId){
+  const posts = await DB.list('forumPosts', 'beu_forum_posts');
+  const post = posts.find(p=> p.id === postId);
+  if(!post) return;
+  const comments = (await DB.list('forumComments', 'beu_forum_comments')).filter(c=> c.postId === postId);
+  const html = `
+    <p style="font-size:.9rem;">${escapeHtml(post.text)}</p>
+    <h3 class="mt-16" style="font-size:.9rem;">Add a comment</h3>
+    <form id="forumCommentForm">
+      <textarea id="fcText" rows="2" required placeholder="Write a comment..."></textarea>
+      <button type="submit" class="btn btn-primary btn-sm mt-8">Comment</button>
+    </form>
+    <h3 class="mt-24" style="font-size:.9rem;">Comments (${comments.length})</h3>
+    ${comments.length ? comments.map(c=>`<div class="card mt-8" style="padding:10px;"><p style="font-size:.85rem;">${escapeHtml(c.text)}</p></div>`).join('') : '<p class="muted mt-8">No comments yet.</p>'}
+  `;
+  openPanel(html, 'Discussion');
+  $('#forumCommentForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const text = $('#fcText').value.trim();
+    if(!text){ return; }
+    if(containsBannedContent(text)){ toast('Please keep it respectful'); return; }
+    await DB.add('forumComments', 'beu_forum_comments', {postId, text, date:new Date().toISOString()});
+    openForumPostDetail(postId);
+  });
+}
+
+
+function initStudyPlanner(){
+  const branchSel = $('#spBranch'), semSel = $('#spSem');
+  if(!branchSel) return;
+  fillSelect(branchSel, BRANCHES); fillSelect(semSel, SEMESTERS);
+  branchSel.value = store.get(LS.studentBranch, BRANCHES[0]);
+  semSel.value = store.get(LS.studentSem, '1');
+  const refreshSubjects = ()=>{
+    const subjSel = $('#spSubjects');
+    subjSel.innerHTML = subjectsFor(Number(semSel.value), branchSel.value)
+      .map(s=> `<label style="display:flex; align-items:center; gap:6px; font-size:.82rem; margin-top:6px;"><input type="checkbox" value="${escapeHtml(s)}"> ${escapeHtml(s)}</label>`).join('');
+  };
+  branchSel.addEventListener('change', refreshSubjects);
+  semSel.addEventListener('change', refreshSubjects);
+  refreshSubjects();
+
+  $('#spGenerateBtn').addEventListener('click', async ()=>{
+    const subjects = $$('#spSubjects input:checked').map(c=> c.value);
+    const examDate = $('#spExamDate').value;
+    const hours = $('#spHours').value || '2';
+    if(!subjects.length){ toast('Select at least one subject'); return; }
+    if(!examDate){ toast('Pick an exam date'); return; }
+
+    const daysLeft = Math.max(1, daysBetween(todayStr(), examDate));
+    const prompt = `I'm a ${branchSel.value} student in Semester ${semSel.value}. My exam is in ${daysLeft} days (on ${examDate}). I need to prepare these subjects: ${subjects.join(', ')}. I can study about ${hours} hours per day.
+
+Create a study plan with these three parts, clearly labeled with headers:
+1. DAILY PLAN — what to study each day for the next 7 days
+2. WEEKLY PLAN — how to divide the remaining time across all ${subjects.length} subjects until the exam
+3. REVISION PLAN — a revision strategy for the final 3 days before the exam
+
+Keep it practical and concise, using short bullet points, not long paragraphs.`;
+
+    const out = $('#spOutput');
+    out.innerHTML = `<p class="muted">Generating your plan…</p>`;
+    try{
+      const plan = await AIChat.getReply(prompt, []);
+      out.innerHTML = `<div class="card mt-16" style="white-space:pre-wrap; font-size:.88rem; line-height:1.6;">${escapeHtml(plan)}</div>`;
+      awardActivity('aiStudySession', 'Generated an AI study plan');
+      toast('Study plan ready! +' + XP_TABLE.aiStudySession + ' XP');
+    }catch(err){
+      out.innerHTML = `<p style="color:var(--danger);">Could not generate a plan — make sure the AI backend is connected (⚙️ in the AI chat).</p>`;
+    }
+  });
+}
 
 /* ============================== DB (shared backend abstraction) ==============================
    Used by Rate My Professor + Q&A Board. Transparently uses Firestore when
@@ -4425,6 +5177,9 @@ function refreshPageOnEntry(pageId){
   if(pageId === 'dashboard') renderDashboard();
   if(pageId === 'quiz'){ renderQuiz(); renderQuizStatsBar(); renderLeaderboard(); }
   if(pageId === 'profile') renderProfile();
+  if(pageId === 'aptitude') renderAptitude();
+  if(pageId === 'word-of-day') renderWordOfDay();
+  if(pageId === 'coding-challenge') renderCodingChallenge();
 }
 
 /* The floating AI button is hidden on the homepage — the hero already has
@@ -4453,6 +5208,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initialRoute();
   renderJobs(); renderEdu(); renderSocials(); renderHelp(); renderBlogs(); renderTools(); renderGames(); renderMentorSection();
   initAttendance(); initCGPA(); initTimetable(); initReviews(); initProfessors(); initQA(); initDashboard(); initQuiz(); initProfile(); initAdminMode();
+  updateLoginStreak();
+  initAptitude(); initWordOfDay();
+  initCodingChallenge();
+  initStudyPlanner();
+  initForum();
+  initNotifications();
   AIChat.init();
   initSearch();
   initPWA();
