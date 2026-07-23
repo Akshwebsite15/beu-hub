@@ -2,7 +2,7 @@
    Caches the app shell so core navigation & saved data (attendance,
    CGPA, timetable) work offline. Tool CDNs still need internet. */
 
-const CACHE_NAME = 'beu-hub-v15';
+const CACHE_NAME = 'beu-hub-v17';
 const SHELL_FILES = [
   './',
   './index.html',

@@ -357,6 +357,9 @@ th{color:var(--text-dim); font-weight:600; font-size:.75rem; text-transform:uppe
 .quiz-stat-num{display:block; font-size:1.3rem; font-weight:800; color:var(--primary);}
 .quiz-stat-label{display:block; font-size:.72rem; color:var(--text-dim); margin-top:2px;}
 
+.pill-tab{background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:7px 14px; font-size:.78rem; font-weight:600; color:var(--text-dim); cursor:pointer; margin:0 6px 6px 0;}
+.pill-tab.active{background:var(--primary); border-color:var(--primary); color:#fff;}
+
 /* ---------- Syllabus Tracker ---------- */
 .tracker-progress{background:var(--surface-2); border-radius:999px; height:8px; overflow:hidden; margin:10px 0 4px;}
 .tracker-progress-bar{height:100%; background:var(--primary); border-radius:999px; transition:width .25s ease;}

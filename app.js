@@ -12,7 +12,9 @@ const LS = {
   questions:'beu_questions', answers:'beu_answers',
   studentName:'beu_student_name', studentBranch:'beu_student_branch', studentSem:'beu_student_sem',
   quizProgress:'beu_quiz_progress', adminMode:'beu_admin_mode',
-  lastResource:'beu_last_resource', exams:'beu_exams'
+  lastResource:'beu_last_resource', exams:'beu_exams',
+  bookmarks:'beu_bookmarks', resourceDownloads:'beu_resource_downloads',
+  polyBranch:'beu_poly_branch', polySem:'beu_poly_sem'
 };
 
 /* If you set APP_SHARED_SECRET on your Worker (see worker.js / AI-SETUP.md),
@@ -52,7 +54,7 @@ function initAdminMode(){
         toast('Wrong passphrase');
       }
     }
-    renderQuestionList(); renderProfessorList();
+    renderQuestionList(); renderProfessorList(); renderUploads();
   });
 }
 
@@ -150,6 +152,220 @@ function openEmbed(url, title){
 /* ============================== DATA ============================== */
 const BRANCHES = ['CSE','IT','ECE','EE','ME','CE','CSE (AI & ML)','CSE (Data Science)'];
 const SEMESTERS = [1,2,3,4,5,6,7,8];
+
+/* ============================== POLYTECHNIC HUB ==============================
+   Entirely separate data model from the BEU B.Tech site above — different
+   branches, different semester count (3-year diploma = 6 semesters), its own
+   resource storage and its own upload flow. Nothing here touches BRANCHES,
+   SEMESTERS, RESOURCE_FILES, or any existing BEU function. */
+const POLY_BRANCHES = ['Civil Engineering', 'Mechanical Engineering', 'Electrical Engineering', 'Electronics Engineering', 'Computer Science Engineering', 'Automobile Engineering'];
+const POLY_SEMESTERS = [1,2,3,4,5,6];
+const POLY_RESOURCE_TYPES = [
+  {key:'notes', label:'Notes', icon:'📝'},
+  {key:'pyq', label:'PYQs', icon:'📚'},
+  {key:'syllabus', label:'Syllabus', icon:'📋'},
+  {key:'importantQuestions', label:'Important Questions', icon:'❗'},
+  {key:'practical', label:'Practical Files', icon:'🧪'},
+  {key:'labManual', label:'Lab Manuals', icon:'🔬'},
+  {key:'viva', label:'Viva Questions', icon:'🎤'},
+  {key:'mcq', label:'MCQ Practice', icon:'✅'},
+];
+function polyFileKey(branch, sem, subject){ return `${branch}__${sem}__${subject}`; }
+
+/* Polytechnic resources are entirely student-contributed with NO admin
+   approval gate, per explicit request — different from the BEU Community
+   Uploads flow (which is admin-reviewed). Trade-off, made openly: anyone can
+   publish instantly, so there's no pre-publication filter beyond the same
+   basic respectful-content check used elsewhere on the site. Admin Mode's
+   delete button (already built) is the only after-the-fact safety net —
+   there is still no login system, so "admin" only means whoever knows the
+   passphrase in app.js. If this section gets real traffic, moving to
+   reviewed uploads (like the BEU one) is a one-line change: add
+   `status:'pending'` below and filter approved-only in the render function. */
+async function submitPolyResource({type, branch, sem, subject, title, link, desc}){
+  const uploader = store.get(LS.studentName, '').trim() || 'Anonymous student';
+  return DB.add('polyResources', 'beu_poly_resources', {
+    type, branch, sem, subject, title, link, desc, uploader, date: new Date().toISOString()
+  });
+}
+async function polySubjectsFor(branch, sem){
+  const all = await DB.list('polyResources', 'beu_poly_resources');
+  const subs = new Set(all.filter(r=> r.branch === branch && String(r.sem) === String(sem)).map(r=> r.subject));
+  return [...subs].sort();
+}
+
+/* ============================== POLYTECHNIC PAGE ============================== */
+function initPolytechnic(){
+  const branchSel = $('#polyBranch'), semSel = $('#polySem');
+  if(!branchSel) return;
+  fillSelect(branchSel, POLY_BRANCHES); fillSelect(semSel, POLY_SEMESTERS);
+  branchSel.value = store.get(LS.polyBranch, POLY_BRANCHES[0]);
+  semSel.value = store.get(LS.polySem, '1');
+
+  const typeTabs = $('#polyTypeTabs');
+  const pendingTab = sessionStorage.getItem('polyPendingTab');
+  typeTabs.innerHTML = POLY_RESOURCE_TYPES.map((t,i)=> `<button type="button" class="pill-tab${(pendingTab ? t.key===pendingTab : i===0)?' active':''}" data-type="${t.key}">${t.icon} ${t.label}</button>`).join('');
+  let activeType = pendingTab || POLY_RESOURCE_TYPES[0].key;
+  if(pendingTab) sessionStorage.removeItem('polyPendingTab');
+
+  const refresh = ()=>{
+    store.set(LS.polyBranch, branchSel.value);
+    store.set(LS.polySem, semSel.value);
+    renderPolyResources(activeType, branchSel.value, semSel.value);
+  };
+  branchSel.addEventListener('change', refresh);
+  semSel.addEventListener('change', refresh);
+  $$('.pill-tab', typeTabs).forEach(btn=> btn.addEventListener('click', ()=>{
+    $$('.pill-tab', typeTabs).forEach(b=> b.classList.remove('active'));
+    btn.classList.add('active');
+    activeType = btn.dataset.type;
+    refresh();
+  }));
+  $('#polySearch').addEventListener('input', refresh);
+  $('#polyUploadBtn').addEventListener('click', ()=> openPolyUploadForm(activeType, branchSel.value, semSel.value));
+
+  refresh();
+  renderPolyTrending();
+  renderPolyUpdates();
+
+  $('#polyPostUpdateBtn')?.addEventListener('click', openPolyUpdateForm);
+  $('#polyStreakBox').innerHTML = `<span class="quiz-stat-num">🔥 ${progress().loginStreak}</span><span class="quiz-stat-label">Day streak</span>`;
+  $('#polyAiDoubtBtn')?.addEventListener('click', ()=> AIChat.toggle(true));
+}
+
+async function renderPolyResources(type, branch, sem){
+  const search = ($('#polySearch').value || '').trim().toLowerCase();
+  let all = (await DB.list('polyResources', 'beu_poly_resources')).filter(r=> r.type === type && r.branch === branch && String(r.sem) === String(sem));
+  if(search) all = all.filter(r=> r.subject.toLowerCase().includes(search) || r.title.toLowerCase().includes(search));
+
+  const list = $('#polyResourceList');
+  if(!all.length){
+    list.innerHTML = `<p class="muted">Nothing here yet for ${escapeHtml(branch)} · Sem ${escapeHtml(sem)}. Be the first to upload!</p>`;
+    return;
+  }
+  list.innerHTML = all.map(r=>`
+    <div class="card mt-8">
+      <p class="muted" style="font-size:.72rem;">${escapeHtml(r.subject)} · by ${escapeHtml(r.uploader)} · ${new Date(r.date).toLocaleDateString()}</p>
+      <h3 style="font-size:.9rem;">${escapeHtml(r.title)}</h3>
+      ${r.desc ? `<p style="font-size:.82rem;">${escapeHtml(r.desc)}</p>` : ''}
+      <div class="flex gap-8 mt-8">
+        <a class="btn btn-primary btn-sm" href="${escapeHtml(r.link)}" target="_blank" rel="noopener noreferrer">Open ↗</a>
+        ${isAdminMode() ? `<button class="btn btn-ghost btn-sm poly-delete-btn" data-id="${r.id}" style="color:var(--danger);">🗑️</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+  $$('.poly-delete-btn', list).forEach(b=> b.addEventListener('click', async ()=>{
+    if(!confirm('Delete this resource?')) return;
+    await DB.remove('polyResources', 'beu_poly_resources', b.dataset.id);
+    toast('Deleted');
+    renderPolyResources(type, branch, sem);
+  }));
+}
+
+function openPolyUploadForm(defaultType, defaultBranch, defaultSem){
+  const html = `
+    <form id="polyUploadForm">
+      <div class="form-row cols-2">
+        <div><label>Type</label><select id="puType">${POLY_RESOURCE_TYPES.map(t=>`<option value="${t.key}" ${t.key===defaultType?'selected':''}>${t.icon} ${t.label}</option>`).join('')}</select></div>
+        <div><label>Semester</label><select id="puSem">${POLY_SEMESTERS.map(s=>`<option value="${s}" ${String(s)===String(defaultSem)?'selected':''}>${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-row mt-8">
+        <label>Branch</label>
+        <select id="puBranch">${POLY_BRANCHES.map(b=>`<option ${b===defaultBranch?'selected':''}>${escapeHtml(b)}</option>`).join('')}</select>
+      </div>
+      <div class="form-row mt-8">
+        <label>Subject</label>
+        <input type="text" id="puSubject" required placeholder="e.g. Strength of Materials">
+      </div>
+      <div class="form-row mt-8">
+        <label>Title</label>
+        <input type="text" id="puTitle" required placeholder="e.g. Unit 3 Notes">
+      </div>
+      <div class="form-row mt-8">
+        <label>Link (Google Drive, etc.)</label>
+        <input type="text" id="puLink" required placeholder="https://drive.google.com/...">
+      </div>
+      <div class="form-row mt-8">
+        <label>Description (optional)</label>
+        <textarea id="puDesc" rows="2"></textarea>
+      </div>
+      <p class="muted mt-8" style="font-size:.74rem;">This goes live immediately — no approval wait. Keep it respectful and relevant.</p>
+      <button type="submit" class="btn btn-primary btn-block mt-16">Publish Now</button>
+    </form>
+  `;
+  openPanel(html, 'Upload a Resource');
+  $('#polyUploadForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const subject = $('#puSubject').value.trim();
+    const title = $('#puTitle').value.trim();
+    const link = $('#puLink').value.trim();
+    if(!subject || !title || !link){ toast('Subject, title and link are required'); return; }
+    if(!/^https?:\/\//.test(link)){ toast('Link must start with http:// or https://'); return; }
+    if(containsBannedContent(subject) || containsBannedContent(title) || containsBannedContent($('#puDesc').value)){ toast('Please keep it respectful'); return; }
+    await submitPolyResource({
+      type: $('#puType').value, branch: $('#puBranch').value, sem: $('#puSem').value,
+      subject, title, link, desc: $('#puDesc').value.trim()
+    });
+    awardActivity('uploadNotes', `Published (Polytechnic): ${title}`);
+    closePanel();
+    toast('Published! +' + XP_TABLE.uploadNotes + ' XP');
+    // Refresh in place (not a full initPolytechnic(), which would reset the
+    // active tab/branch/sem back to defaults and hide what was just uploaded)
+    const curType = $('#polyTypeTabs .pill-tab.active')?.dataset.type || POLY_RESOURCE_TYPES[0].key;
+    renderPolyResources(curType, $('#polyBranch').value, $('#polySem').value);
+    renderPolyTrending();
+  });
+}
+
+async function renderPolyTrending(){
+  const all = await DB.list('polyResources', 'beu_poly_resources');
+  const notes = all.filter(r=> r.type === 'notes').slice(0,5);
+  const pyqs = all.filter(r=> r.type === 'pyq').slice(0,5);
+  const mk = (arr)=> arr.length ? arr.map(r=>`<div class="flex justify-between items-center" style="padding:6px 0; font-size:.82rem;"><span>${escapeHtml(r.title)} <span class="muted">(${escapeHtml(r.branch)})</span></span><a href="${escapeHtml(r.link)}" target="_blank" rel="noopener noreferrer">Open ↗</a></div>`).join('') : '<p class="muted" style="font-size:.8rem;">Nothing yet.</p>';
+  $('#polyTrendingNotes').innerHTML = mk(notes);
+  $('#polyRecentPyqs').innerHTML = mk(pyqs);
+}
+
+function openPolyUpdateForm(){
+  const html = `
+    <form id="polyUpdateForm">
+      <div class="form-row">
+        <label>Category</label>
+        <select id="puUpdateCat"><option>Result</option><option>Exam Notification</option><option>Scholarship</option></select>
+      </div>
+      <div class="form-row mt-8">
+        <label>Update text</label>
+        <textarea id="puUpdateText" rows="3" required></textarea>
+      </div>
+      <div class="form-row mt-8">
+        <label>Link (optional)</label>
+        <input type="text" id="puUpdateLink" placeholder="https://...">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block mt-16">Post Update</button>
+    </form>
+  `;
+  openPanel(html, 'Post Update (Admin)');
+  $('#polyUpdateForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const text = $('#puUpdateText').value.trim();
+    if(!text) return;
+    await DB.add('polyUpdates', 'beu_poly_updates', {category:$('#puUpdateCat').value, text, link:$('#puUpdateLink').value.trim(), date:new Date().toISOString()});
+    closePanel();
+    renderPolyUpdates();
+    toast('Posted');
+  });
+}
+async function renderPolyUpdates(){
+  const el2 = $('#polyUpdatesList');
+  if(!el2) return;
+  const updates = (await DB.list('polyUpdates', 'beu_poly_updates')).slice(0,10);
+  el2.innerHTML = updates.length ? updates.map(u=>`
+    <div class="flex justify-between items-center" style="padding:8px 0; border-bottom:1px solid var(--border);">
+      <span style="font-size:.82rem;"><span class="tag">${escapeHtml(u.category)}</span> ${escapeHtml(u.text)}</span>
+      ${u.link ? `<a href="${escapeHtml(u.link)}" target="_blank" rel="noopener noreferrer" style="font-size:.78rem;">View ↗</a>` : ''}
+    </div>
+  `).join('') : '<p class="muted">No updates posted yet.</p>';
+}
 
 const SUBJECTS = {
   1: ['Engineering Mathematics I','Engineering Physics','Basic Electrical Engineering','Programming in C','Engineering Drawing','Communication Skills'],
@@ -2163,6 +2379,51 @@ const GOVT_JOBS = [
   {name:'Bihar State Govt', full:'BPSC / Bihar Staff Selection', site:'https://onlinebssc.com', note:'State-level technical & non-technical posts.'}
 ];
 
+/* Real platforms where students actually find internships, hackathons,
+   scholarships and remote jobs — same honest approach as GOVT_JOBS above
+   (links to real sources rather than pretending to have live scraped
+   listings, which this static site has no way to fetch/update automatically). */
+const INTERNSHIP_PORTALS = [
+  {name:'Internshala', category:'Internships', site:'https://internshala.com', note:'India\'s largest internship platform — filter by stipend, location, work-from-home.'},
+  {name:'AICTE Internship Portal', category:'Internships', site:'https://internship.aicte-india.org', note:'Govt-run portal connecting AICTE-approved colleges with companies.'},
+  {name:'Unstop (Dare2Compete)', category:'Hackathons & Contests', site:'https://unstop.com', note:'Hackathons, coding contests, case competitions and internships.'},
+  {name:'Devfolio', category:'Hackathons & Contests', site:'https://devfolio.co', note:'Major student hackathons across India, many with cash prizes.'},
+  {name:'HackerEarth Challenges', category:'Hackathons & Contests', site:'https://www.hackerearth.com/challenges', note:'Coding challenges and hackathons hosted by companies for hiring.'},
+  {name:'National Scholarship Portal', category:'Scholarships', site:'https://scholarships.gov.in', note:'Official Govt of India portal for central & state scholarships.'},
+  {name:'Buddy4Study', category:'Scholarships', site:'https://www.buddy4study.com', note:'Aggregates private and govt scholarships by category/state.'},
+  {name:'LinkedIn Jobs', category:'Remote Jobs', site:'https://www.linkedin.com/jobs', note:'Filter by "Remote" and "Internship" for student-friendly roles.'},
+  {name:'Wellfound (AngelList Talent)', category:'Remote Jobs', site:'https://wellfound.com', note:'Startup jobs and internships, many remote-friendly.'},
+  {name:'Naukri Campus', category:'Campus Drives', site:'https://www.naukri.com/campus', note:'Campus placement drives and fresher hiring.'}
+];
+function renderInternships(){
+  const wrap = $('#internshipsGrid');
+  if(!wrap) return;
+  const cats = [...new Set(INTERNSHIP_PORTALS.map(i=>i.category))];
+  wrap.innerHTML = cats.map(cat=>`
+    <h3 class="mt-24" style="font-size:1rem;">${escapeHtml(cat)}</h3>
+    <div class="grid grid-3 mt-8">
+      ${INTERNSHIP_PORTALS.filter(i=>i.category===cat).map(i=>`
+        <div class="card">
+          <h3 style="font-size:.95rem;">${escapeHtml(i.name)}</h3>
+          <p class="muted" style="font-size:.8rem;">${escapeHtml(i.note)}</p>
+          <div class="flex gap-8 mt-8">
+            <a class="btn btn-primary btn-sm" href="${i.site}" target="_blank" rel="noopener noreferrer">Visit ↗</a>
+            <button class="btn btn-ghost btn-sm internship-bookmark-btn" data-name="${escapeHtml(i.name)}">${store.get(LS.bookmarks,[]).includes('internship__'+i.name) ? '⭐' : '☆'}</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+  $$('.internship-bookmark-btn', wrap).forEach(b=> b.addEventListener('click', ()=>{
+    const key = 'internship__' + b.dataset.name;
+    const marks = store.get(LS.bookmarks, []);
+    const idx = marks.indexOf(key);
+    if(idx >= 0){ marks.splice(idx,1); b.textContent = '☆'; }
+    else { marks.push(key); b.textContent = '⭐'; }
+    store.set(LS.bookmarks, marks);
+  }));
+}
+
 const EDU_WEBSITES = [
   {name:'SWAYAM', site:'https://swayam.gov.in', note:'Free online courses with credits.'},
   {name:'NPTEL', site:'https://nptel.ac.in', note:'IIT/IISc video lectures & certification.'},
@@ -2390,9 +2651,12 @@ function renderResourceList(container, type, branch, sem, onlySubject){
   const files = RESOURCE_FILES[type] || {};
   let subs = subjectsFor(Number(sem), branch);
   if(onlySubject && onlySubject !== 'All') subs = subs.filter(s=>s===onlySubject);
+  const bookmarks = store.get(LS.bookmarks, []);
   container.innerHTML = subs.map(s=>{
     const url = files[fileKey(branch, sem, s)];
     const hasTracker = type === 'syllabus' && SYLLABUS_TOPICS[s];
+    const resKey = `${type}__${fileKey(branch, sem, s)}`;
+    const isBookmarked = bookmarks.includes(resKey);
     return `
     <div class="card" style="flex-direction:row; align-items:center; gap:12px">
       <div class="card-icon">📄</div>
@@ -2402,13 +2666,28 @@ function renderResourceList(container, type, branch, sem, onlySubject){
       </div>
       <div class="flex gap-8" style="flex-wrap:wrap; justify-content:flex-end;">
         ${hasTracker ? `<button class="btn btn-ghost btn-sm tracker-open-btn" data-subject="${escapeHtml(s)}">📋 Tracker</button>` : ''}
+        ${url ? `<button class="icon-btn bookmark-btn" data-reskey="${resKey}" title="Bookmark">${isBookmarked ? '⭐' : '☆'}</button>` : ''}
+        ${url ? `<button class="btn btn-ghost btn-sm resource-info-btn" data-reskey="${resKey}" data-subject="${escapeHtml(s)}">⭐ Rate/Comment</button>` : ''}
         ${url
-          ? `<a class="btn btn-primary btn-sm ${type==='notes' ? 'notes-view-link' : ''}" data-subject="${escapeHtml(s)}" href="${url}" target="_blank" rel="noopener noreferrer">View</a>`
+          ? `<a class="btn btn-primary btn-sm ${type==='notes' ? 'notes-view-link' : ''} resource-view-link" data-reskey="${resKey}" data-subject="${escapeHtml(s)}" href="${url}" target="_blank" rel="noopener noreferrer">View</a>`
           : `<span class="tag" style="white-space:nowrap">Not uploaded yet</span>`}
       </div>
     </div>`;
   }).join('');
   $$('.tracker-open-btn', container).forEach(b=> b.addEventListener('click', ()=> openSyllabusTracker(b.dataset.subject)));
+  $$('.bookmark-btn', container).forEach(b=> b.addEventListener('click', ()=>{
+    const marks = store.get(LS.bookmarks, []);
+    const idx = marks.indexOf(b.dataset.reskey);
+    if(idx >= 0){ marks.splice(idx,1); b.textContent = '☆'; toast('Bookmark removed'); }
+    else { marks.push(b.dataset.reskey); b.textContent = '⭐'; toast('Bookmarked'); }
+    store.set(LS.bookmarks, marks);
+  }));
+  $$('.resource-info-btn', container).forEach(b=> b.addEventListener('click', ()=> openResourceMetaPanel(b.dataset.reskey, b.dataset.subject)));
+  $$('.resource-view-link', container).forEach(a=> a.addEventListener('click', async ()=>{
+    const dl = store.get(LS.resourceDownloads, {});
+    dl[a.dataset.reskey] = (dl[a.dataset.reskey] || 0) + 1;
+    store.set(LS.resourceDownloads, dl);
+  }));
   $$('.notes-view-link', container).forEach(a=> a.addEventListener('click', ()=>{
     const key = 'notesRead_' + todayStr() + '_' + a.dataset.subject;
     if(!store.get(key, false)){
@@ -2452,6 +2731,51 @@ function openResourcePanel(type, title, preset){
    Unit-by-unit "mark as done" checklist for subjects where SYLLABUS_TOPICS has
    parsed data. Progress is saved in localStorage per subject (LS.syllabusProgress). */
 function trackerTopicId(subject, unitIdx, topicIdx){ return `${subject}__u${unitIdx}__t${topicIdx}`; }
+/* Ratings + comments + download count for any resource (notes/pyq/syllabus/
+   lab/practical/books). Shared via Firestore once configured, else local. */
+async function openResourceMetaPanel(resKey, subject){
+  const ratings = (await DB.list('resourceRatings', 'beu_resource_ratings')).filter(r=> r.resKey === resKey);
+  const comments = (await DB.list('resourceComments', 'beu_resource_comments')).filter(c=> c.resKey === resKey);
+  const avg = ratings.length ? (ratings.reduce((a,r)=>a+r.stars,0) / ratings.length) : 0;
+  const downloads = (store.get(LS.resourceDownloads, {}))[resKey] || 0;
+
+  const html = `
+    <p class="muted" style="font-size:.8rem;">${escapeHtml(subject)}</p>
+    <div class="card mt-8" style="padding:14px;">
+      <p style="font-size:.85rem;">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))} ${avg ? avg.toFixed(1)+'/5' : 'No ratings yet'} · ${ratings.length} rating${ratings.length===1?'':'s'}</p>
+      <p class="muted mt-8" style="font-size:.78rem;">⬇️ Viewed/downloaded ${downloads} time${downloads===1?'':'s'} (this device)</p>
+    </div>
+    <p style="font-size:.82rem; font-weight:600;" class="mt-16">Rate this resource</p>
+    <div class="star-row" id="resRatingStars">${[1,2,3,4,5].map(n=>`<span class="star" data-val="${n}">☆</span>`).join('')}</div>
+    <form id="resCommentForm" class="mt-16">
+      <label style="font-size:.82rem;">Add a comment</label>
+      <textarea id="resCommentText" rows="2" placeholder="Was this helpful? Any notes for other students?"></textarea>
+      <button type="submit" class="btn btn-primary btn-sm mt-8">Post Comment</button>
+    </form>
+    <h3 class="mt-24" style="font-size:.9rem;">Comments (${comments.length})</h3>
+    ${comments.length ? comments.map(c=>`<div class="card mt-8" style="padding:10px;"><p style="font-size:.85rem;">${escapeHtml(c.text)}</p></div>`).join('') : '<p class="muted mt-8">No comments yet.</p>'}
+  `;
+  openPanel(html, 'Rate & Comment');
+
+  let selectedStars = 0;
+  $$('#resRatingStars .star').forEach(star=>{
+    star.addEventListener('click', async ()=>{
+      selectedStars = Number(star.dataset.val);
+      $$('#resRatingStars .star').forEach(s=> s.textContent = Number(s.dataset.val) <= selectedStars ? '★' : '☆');
+      await DB.add('resourceRatings', 'beu_resource_ratings', {resKey, stars:selectedStars, date:new Date().toISOString()});
+      toast('Thanks for rating! 🙌');
+    });
+  });
+  $('#resCommentForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const text = $('#resCommentText').value.trim();
+    if(!text) return;
+    if(containsBannedContent(text)){ toast('Please keep it respectful'); return; }
+    await DB.add('resourceComments', 'beu_resource_comments', {resKey, text, date:new Date().toISOString()});
+    openResourceMetaPanel(resKey, subject);
+  });
+}
+
 function openSyllabusTracker(subject){
   const units = SYLLABUS_TOPICS[subject];
   if(!units) return;
@@ -3368,6 +3692,15 @@ function earnedBadges(p){ return BADGE_DEFS.filter(b=> b.check(p)); }
 function initQuiz(){
   renderQuiz();
   renderQuizStatsBar();
+  const branchFilterEl = $('#leaderboardBranchFilter');
+  if(branchFilterEl){
+    BRANCHES.forEach(b=>{
+      const opt = document.createElement('option');
+      opt.value = b; opt.textContent = b;
+      branchFilterEl.appendChild(opt);
+    });
+    branchFilterEl.addEventListener('change', renderLeaderboard);
+  }
   renderLeaderboard();
   $('#quizLeaderboardRefresh')?.addEventListener('click', renderLeaderboard);
 }
@@ -3456,7 +3789,8 @@ async function updateLeaderboardEntry(prog){
   if(!name) return; // no display name set yet (Dashboard) — skip leaderboard sync
   const docId = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60) || 'anonymous';
   await DB.setDoc('quizLeaderboard', 'beu_quiz_leaderboard_cache', docId, {
-    name, xp: prog.xp, coins: prog.coins, streak: prog.streak, date: new Date().toISOString()
+    name, xp: prog.xp, coins: prog.coins, streak: prog.streak,
+    branch: store.get(LS.studentBranch, ''), date: new Date().toISOString()
   });
   renderLeaderboard();
 }
@@ -3465,17 +3799,19 @@ async function renderLeaderboard(){
   const el2 = $('#quizLeaderboard');
   if(!el2) return;
   el2.innerHTML = `<p class="muted" style="font-size:.82rem;">Loading leaderboard…</p>`;
-  const all = (await DB.list('quizLeaderboard', 'beu_quiz_leaderboard_cache'))
-    .slice().sort((a,b)=> b.xp - a.xp).slice(0, 20);
+  const branchFilter = $('#leaderboardBranchFilter')?.value || '';
+  let all = (await DB.list('quizLeaderboard', 'beu_quiz_leaderboard_cache')).slice().sort((a,b)=> b.xp - a.xp);
+  if(branchFilter) all = all.filter(p=> p.branch === branchFilter);
+  all = all.slice(0, 20);
   if(!all.length){
-    el2.innerHTML = `<p class="muted" style="font-size:.82rem;">No scores yet — set your name on the Dashboard and play today's quiz to appear here!</p>`;
+    el2.innerHTML = `<p class="muted" style="font-size:.82rem;">No scores yet${branchFilter ? ' for '+escapeHtml(branchFilter) : ''} — set your name on the Dashboard and play today's quiz to appear here!</p>`;
     return;
   }
   el2.innerHTML = `
     <table class="table">
-      <thead><tr><th>#</th><th>Name</th><th>XP</th><th>🪙</th><th>🔥</th></tr></thead>
+      <thead><tr><th>#</th><th>Name</th><th>Branch</th><th>XP</th><th>🪙</th><th>🔥</th></tr></thead>
       <tbody>
-        ${all.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${p.xp}</td><td>${p.coins}</td><td>${p.streak}</td></tr>`).join('')}
+        ${all.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.branch||'—')}</td><td>${p.xp}</td><td>${p.coins}</td><td>${p.streak}</td></tr>`).join('')}
       </tbody>
     </table>
   `;
@@ -3700,6 +4036,179 @@ function initNotifications(){
   });
 }
 
+/* ============================== STUDENT UPLOAD SYSTEM ==============================
+   This site has no file-storage backend (and your existing Resources page
+   explicitly says uploads are admin-managed only), so instead of accepting
+   binary files directly, students submit a description + an external link
+   (Google Drive, GitHub, etc.) which an admin reviews and approves before it
+   shows up publicly. Approved uploads earn the student XP, coins and — after
+   enough approved uploads — a badge. */
+const UPLOAD_XP = 50, UPLOAD_COINS = 10;
+function initUploads(){
+  const branchSel = $('#upBranch'), semSel = $('#upSem');
+  fillSelect(branchSel, BRANCHES); fillSelect(semSel, SEMESTERS);
+  $('#uploadSubmitBtn').addEventListener('click', async ()=>{
+    const type = $('#upType').value;
+    const title = $('#upTitle').value.trim();
+    const link = $('#upLink').value.trim();
+    const desc = $('#upDesc').value.trim();
+    if(!title || !link){ toast('Title and link are required'); return; }
+    if(!/^https?:\/\//.test(link)){ toast('Link must start with http:// or https://'); return; }
+    if(containsBannedContent(title) || containsBannedContent(desc)){ toast('Please keep it respectful'); return; }
+    await DB.add('uploadSubmissions', 'beu_upload_submissions', {
+      type, title, link, desc, branch: branchSel.value, sem: semSel.value,
+      submitter: store.get(LS.studentName, '').trim() || 'Anonymous student',
+      status: 'pending', date: new Date().toISOString()
+    });
+    $('#upTitle').value=''; $('#upLink').value=''; $('#upDesc').value='';
+    // Awarded on submission, not admin approval — this site has no login
+    // system, so there's no reliable way to credit XP back to the original
+    // uploader's device once an admin approves it from a different device.
+    awardActivity('uploadNotes', `Submitted: ${title}`);
+    toast(`Submitted for admin review — thanks for contributing! +${UPLOAD_XP} XP, +${UPLOAD_COINS} coins`);
+    renderUploads();
+  });
+  renderUploads();
+}
+async function renderUploads(){
+  const all = await DB.list('uploadSubmissions', 'beu_upload_submissions');
+  const approved = all.filter(u=> u.status === 'approved');
+  const approvedList = $('#uploadsApprovedList');
+  if(approvedList){
+    approvedList.innerHTML = approved.length ? approved.map(u=>`
+      <div class="card mt-8">
+        <p class="muted" style="font-size:.72rem;">${escapeHtml(u.type)} · ${escapeHtml(u.branch)} · Sem ${escapeHtml(u.sem)} · by ${escapeHtml(u.submitter)}</p>
+        <h3 style="font-size:.9rem;">${escapeHtml(u.title)}</h3>
+        ${u.desc ? `<p style="font-size:.82rem;">${escapeHtml(u.desc)}</p>` : ''}
+        <a class="btn btn-primary btn-sm mt-8" href="${escapeHtml(u.link)}" target="_blank" rel="noopener noreferrer">Open ↗</a>
+      </div>
+    `).join('') : '<p class="muted">No community uploads approved yet.</p>';
+  }
+
+  // Admin review queue
+  const queueWrap = $('#uploadsAdminQueue');
+  if(queueWrap){
+    if(!isAdminMode()){
+      queueWrap.style.display = 'none';
+    } else {
+      queueWrap.style.display = '';
+      const pending = all.filter(u=> u.status === 'pending');
+      $('#uploadsQueueList').innerHTML = pending.length ? pending.map(u=>`
+        <div class="card mt-8">
+          <p class="muted" style="font-size:.72rem;">${escapeHtml(u.type)} · ${escapeHtml(u.branch)} · Sem ${escapeHtml(u.sem)} · by ${escapeHtml(u.submitter)}</p>
+          <h3 style="font-size:.9rem;">${escapeHtml(u.title)}</h3>
+          ${u.desc ? `<p style="font-size:.82rem;">${escapeHtml(u.desc)}</p>` : ''}
+          <a href="${escapeHtml(u.link)}" target="_blank" rel="noopener noreferrer" style="font-size:.8rem;">${escapeHtml(u.link)}</a>
+          <div class="flex gap-8 mt-8">
+            <button class="btn btn-primary btn-sm upload-approve-btn" data-id="${u.id}">✅ Approve</button>
+            <button class="btn btn-ghost btn-sm upload-reject-btn" data-id="${u.id}" style="color:var(--danger);">❌ Reject</button>
+          </div>
+        </div>
+      `).join('') : '<p class="muted">No pending submissions.</p>';
+      $$('.upload-approve-btn').forEach(b=> b.addEventListener('click', async ()=>{
+        const sub = all.find(u=> u.id === b.dataset.id);
+        await DB.setDoc('uploadSubmissions', 'beu_upload_submissions', b.dataset.id, {...sub, status:'approved'});
+        toast('Approved');
+        renderUploads();
+      }));
+      $$('.upload-reject-btn').forEach(b=> b.addEventListener('click', async ()=>{
+        const sub = all.find(u=> u.id === b.dataset.id);
+        await DB.setDoc('uploadSubmissions', 'beu_upload_submissions', b.dataset.id, {...sub, status:'rejected'});
+        toast('Rejected');
+        renderUploads();
+      }));
+    }
+  }
+}
+
+/* ============================== AI MOCK INTERVIEW ==============================
+   Text/voice Q&A using the same AI backend as the Doubt Solver. Gives written
+   feedback on your answers — no fake "confidence score" or voice-tone
+   analysis, since that would need real audio ML models this site doesn't
+   have and I won't fabricate a number that looks precise but isn't real. */
+let interviewSession = null;
+function initInterview(){
+  $('#interviewStartBtn').addEventListener('click', startInterview);
+}
+async function startInterview(){
+  const round = $('#interviewRound').value;
+  const role = $('#interviewRole').value.trim() || 'Software Engineer (fresher)';
+  interviewSession = {round, role, qa: []};
+  $('#interviewSetup').style.display = 'none';
+  $('#interviewBody').style.display = '';
+  await askNextInterviewQuestion();
+}
+async function askNextInterviewQuestion(){
+  const out = $('#interviewBody');
+  out.innerHTML += `<p class="muted" style="font-size:.8rem;">Thinking of a question…</p>`;
+  const history = interviewSession.qa.map(x=> `Q: ${x.question}\nA: ${x.answer}`).join('\n\n');
+  const prompt = `You are conducting a mock ${interviewSession.round} interview for a ${interviewSession.role} position. ${history ? 'So far:\n'+history+'\n\nAsk ONE new, different interview question, appropriate for this stage of the interview.' : 'Ask ONE opening interview question.'} Reply with ONLY the question text, nothing else.`;
+  const q = await AIChat.getReply(prompt, []);
+  interviewSession.qa.push({question: q, answer: null, feedback: null});
+  renderInterview();
+}
+function renderInterview(){
+  const out = $('#interviewBody');
+  out.innerHTML = interviewSession.qa.map((item, i)=>`
+    <div class="card mt-8">
+      <p style="font-size:.7rem;" class="muted">Question ${i+1}</p>
+      <p style="font-weight:600; font-size:.9rem;">${escapeHtml(item.question)}</p>
+      ${item.answer ? `
+        <p class="mt-8" style="font-size:.85rem;"><b>Your answer:</b> ${escapeHtml(item.answer)}</p>
+        ${item.feedback ? `<div class="card mt-8" style="background:var(--surface-2); padding:10px;"><p style="font-size:.72rem; font-weight:600;">AI Feedback</p><p style="font-size:.83rem; white-space:pre-wrap;">${escapeHtml(item.feedback)}</p></div>` : '<p class="muted mt-8" style="font-size:.78rem;">Getting feedback…</p>'}
+      ` : `
+        <textarea id="interviewAnswerInput" rows="3" class="mt-8" placeholder="Type your answer, or use the mic..."></textarea>
+        <div class="flex gap-8 mt-8">
+          <button class="icon-btn" id="interviewVoiceBtn">🎙️</button>
+          <button class="btn btn-primary btn-sm" id="interviewSubmitBtn">Submit Answer</button>
+        </div>
+      `}
+    </div>
+  `).join('') + (interviewSession.qa.length && interviewSession.qa[interviewSession.qa.length-1].feedback ? `
+    <div class="flex gap-8 mt-16">
+      <button class="btn btn-primary btn-sm" id="interviewNextBtn">Next Question →</button>
+      <button class="btn btn-ghost btn-sm" id="interviewEndBtn">End &amp; Get Summary</button>
+    </div>
+  ` : '');
+
+  $('#interviewVoiceBtn')?.addEventListener('click', ()=>{
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){ toast('Voice input not supported in this browser'); return; }
+    const rec = new SR();
+    rec.lang = 'en-IN';
+    rec.onresult = (e)=>{ $('#interviewAnswerInput').value = e.results[0][0].transcript; };
+    rec.onerror = ()=> toast('Could not hear you, try again');
+    rec.start();
+    toast('Listening…');
+  });
+  $('#interviewSubmitBtn')?.addEventListener('click', async ()=>{
+    const answer = $('#interviewAnswerInput').value.trim();
+    if(!answer){ toast('Type or speak your answer first'); return; }
+    const current = interviewSession.qa[interviewSession.qa.length-1];
+    current.answer = answer;
+    renderInterview();
+    const prompt = `Interview question: "${current.question}"\nCandidate's answer: "${answer}"\n\nGive brief, constructive feedback (3-4 sentences) on the content and structure of this answer — what was good, what could be improved. Be specific and encouraging, not harsh. Do not give a numeric score.`;
+    current.feedback = await AIChat.getReply(prompt, []);
+    renderInterview();
+  });
+  $('#interviewNextBtn')?.addEventListener('click', askNextInterviewQuestion);
+  $('#interviewEndBtn')?.addEventListener('click', async ()=>{
+    out.innerHTML += `<p class="muted mt-16">Generating summary…</p>`;
+    const history = interviewSession.qa.map(x=> `Q: ${x.question}\nA: ${x.answer}`).join('\n\n');
+    const prompt = `Here's a completed mock interview transcript for a ${interviewSession.role} position:\n\n${history}\n\nGive an overall written summary: 2-3 strengths, 2-3 areas to improve, and one practical tip for the next interview. No numeric scores.`;
+    const summary = await AIChat.getReply(prompt, []);
+    out.innerHTML += `<div class="card mt-16"><h3 style="font-size:.9rem;">Overall Summary</h3><p class="mt-8" style="font-size:.85rem; white-space:pre-wrap;">${escapeHtml(summary)}</p></div>
+      <button class="btn btn-primary btn-block mt-16" id="interviewRestartBtn">Start New Interview</button>`;
+    awardActivity('aiStudySession', 'Completed AI mock interview');
+    $('#interviewRestartBtn').addEventListener('click', ()=>{
+      interviewSession = null;
+      $('#interviewSetup').style.display = '';
+      $('#interviewBody').style.display = 'none';
+      $('#interviewBody').innerHTML = '';
+    });
+  });
+}
+
 /* ============================== DISCUSSION FORUM ==============================
    Lightweight text-only forum (no image uploads — this site has no file
    storage backend). Posts, likes and comments are shared via Firestore once
@@ -3807,6 +4316,162 @@ async function openForumPostDetail(postId){
   });
 }
 
+
+/* ============================== RESUME KEYWORD CHECKER ==============================
+   Deliberately called a "keyword match check", not an "ATS score" — a real
+   ATS score depends on proprietary parsing logic from each vendor that this
+   site has no access to. What this CAN honestly do: compare your resume text
+   against a job description and show which important keywords are missing,
+   plus a few basic formatting checks. */
+const RESUME_FORMAT_CHECKS = [
+  {label:'Has an email address', test: t=> /[\w.+-]+@[\w-]+\.[\w.-]+/.test(t)},
+  {label:'Has a phone number', test: t=> /\b\d{10}\b|\+\d{1,3}[\s-]?\d{9,10}/.test(t)},
+  {label:'Uses bullet points', test: t=> /[•\-\*]\s/.test(t)},
+  {label:'Reasonable length (200–1000 words)', test: t=> { const n = t.trim().split(/\s+/).length; return n >= 200 && n <= 1000; }},
+  {label:'Mentions a project or experience section', test: t=> /project|experience|internship/i.test(t)},
+  {label:'Mentions skills/technologies', test: t=> /skill|technolog|proficient|programming/i.test(t)},
+];
+const STOPWORDS = new Set(['the','and','for','with','that','this','from','have','will','are','was','were','you','your','our','their','a','an','of','to','in','on','at','is','be','as','it']);
+function initResumeChecker(){
+  $('#resumeCheckBtn').addEventListener('click', ()=>{
+    const resume = $('#resumeText').value.trim();
+    const jd = $('#resumeJD').value.trim();
+    if(!resume){ toast('Paste your resume text first'); return; }
+
+    const formatResults = RESUME_FORMAT_CHECKS.map(c=> ({...c, passed: c.test(resume)}));
+
+    let keywordHtml = '';
+    if(jd){
+      const jdWords = [...new Set(jd.toLowerCase().match(/[a-z][a-z0-9+.#]{2,}/g) || [])].filter(w=> !STOPWORDS.has(w));
+      const resumeLower = resume.toLowerCase();
+      const matched = jdWords.filter(w=> resumeLower.includes(w));
+      const missing = jdWords.filter(w=> !resumeLower.includes(w)).slice(0, 20);
+      const pct = jdWords.length ? Math.round((matched.length / jdWords.length) * 100) : 0;
+      keywordHtml = `
+        <h3 class="mt-24" style="font-size:1rem;">Keyword match vs job description</h3>
+        <div class="card mt-8">
+          <p style="font-size:1.3rem; font-weight:800; color:var(--primary);">${pct}%</p>
+          <p class="muted" style="font-size:.78rem;">${matched.length} of ${jdWords.length} distinct keywords from the job description appear in your resume. This is a simple text-overlap check, not a real ATS score — different ATS systems weigh things differently.</p>
+        </div>
+        ${missing.length ? `<p class="mt-16" style="font-size:.85rem; font-weight:600;">Consider adding these if genuinely relevant to you:</p><div class="tags mt-8">${missing.map(w=>`<span class="tag">${escapeHtml(w)}</span>`).join('')}</div>` : ''}
+      `;
+    }
+
+    $('#resumeCheckOutput').innerHTML = `
+      <h3 class="mt-24" style="font-size:1rem;">Formatting checklist</h3>
+      <div class="mt-8">
+        ${formatResults.map(r=> `<p style="font-size:.85rem;">${r.passed ? '✅' : '⬜'} ${escapeHtml(r.label)}</p>`).join('')}
+      </div>
+      ${keywordHtml}
+      <p class="muted mt-16" style="font-size:.75rem;">These are heuristic checks to help you self-review — they don't guarantee how any specific company's applicant tracking system will score your resume.</p>
+    `;
+  });
+}
+
+/* ============================== MOCK TEST ==============================
+   Timed test pulling from the same verified question banks as Daily Quiz
+   and Daily Aptitude — GATE-style (technical CS questions) or Placement-
+   style (technical + aptitude mix). Not tied to a specific date, so you can
+   retake it anytime; each attempt is a fresh random set. */
+const MOCK_TEST_MINUTES = 15;
+const MOCK_TEST_COUNT = 15;
+let mockTestState = null;
+function buildMockTest(pattern){
+  const pool = pattern === 'gate'
+    ? QUIZ_BANK
+    : [...QUIZ_BANK, ...APTITUDE_BANK.map(a=>({q:a.q, options:a.options, answer:a.answer, subject:a.topic}))];
+  const shuffled = pool.slice().sort(()=> Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(MOCK_TEST_COUNT, pool.length));
+}
+function initMockTest(){
+  $('#mockStartBtn').addEventListener('click', ()=>{
+    const pattern = $('#mockPattern').value;
+    mockTestState = {
+      questions: buildMockTest(pattern),
+      answers: [],
+      startedAt: Date.now(),
+      pattern
+    };
+    $('#mockSetup').style.display = 'none';
+    $('#mockBody').style.display = '';
+    renderMockTest();
+    startMockTimer();
+  });
+}
+let mockTimerInterval = null;
+function startMockTimer(){
+  clearInterval(mockTimerInterval);
+  const endAt = mockTestState.startedAt + MOCK_TEST_MINUTES * 60000;
+  mockTimerInterval = setInterval(()=>{
+    const remaining = Math.max(0, endAt - Date.now());
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    const el2 = $('#mockTimer');
+    if(el2) el2.textContent = `⏱️ ${mins}:${secs.toString().padStart(2,'0')}`;
+    if(remaining <= 0){
+      clearInterval(mockTimerInterval);
+      submitMockTest();
+    }
+  }, 1000);
+}
+function renderMockTest(){
+  const body = $('#mockBody');
+  body.innerHTML = `
+    <p id="mockTimer" style="font-weight:700; font-size:1.1rem; color:var(--primary);"></p>
+    <form id="mockForm">
+      ${mockTestState.questions.map((q,i)=>`
+        <div class="card mt-8">
+          <p class="muted" style="font-size:.72rem;">${escapeHtml(q.subject)}</p>
+          <p style="font-weight:600; font-size:.88rem;">${i+1}. ${escapeHtml(q.q)}</p>
+          ${q.options.map((opt,oi)=>`
+            <label style="display:flex; align-items:center; gap:8px; margin-top:6px; font-size:.82rem; cursor:pointer;">
+              <input type="radio" name="mq${i}" value="${oi}"> ${escapeHtml(opt)}
+            </label>
+          `).join('')}
+        </div>
+      `).join('')}
+      <button type="submit" class="btn btn-primary btn-block mt-16">Submit Test</button>
+    </form>
+  `;
+  $('#mockForm').addEventListener('submit', (e)=>{ e.preventDefault(); submitMockTest(); });
+}
+function submitMockTest(){
+  if(!mockTestState || mockTestState.submitted) return;
+  mockTestState.submitted = true;
+  clearInterval(mockTimerInterval);
+  const body = $('#mockBody');
+  let correct = 0;
+  const review = mockTestState.questions.map((q,i)=>{
+    const picked = body.querySelector(`input[name="mq${i}"]:checked`);
+    const answer = picked ? Number(picked.value) : -1;
+    const isCorrect = answer === q.answer;
+    if(isCorrect) correct++;
+    return {q, answer, isCorrect};
+  });
+  const pct = Math.round((correct / mockTestState.questions.length) * 100);
+  body.innerHTML = `
+    <div class="card text-center">
+      <div style="font-size:2rem;">${pct >= 70 ? '🎉' : pct >= 40 ? '📘' : '💪'}</div>
+      <h3>${correct}/${mockTestState.questions.length} correct (${pct}%)</h3>
+      <p class="muted">${pct >= 70 ? 'Great performance!' : 'Keep practicing — review the answers below.'}</p>
+    </div>
+    <div class="mt-16">
+      ${review.map((r,i)=>`
+        <div class="card mt-8">
+          <p style="font-size:.85rem; font-weight:600;">${i+1}. ${escapeHtml(r.q.q)}</p>
+          <p class="muted mt-8" style="font-size:.8rem;">Your answer: ${r.answer>=0 ? escapeHtml(r.q.options[r.answer]) : '(skipped)'} ${r.isCorrect ? '✅' : '❌ (correct: '+escapeHtml(r.q.options[r.q.answer])+')'}</p>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn btn-primary btn-block mt-16" id="mockRestartBtn">Take Another Test</button>
+  `;
+  $('#mockRestartBtn').addEventListener('click', ()=>{
+    mockTestState = null;
+    $('#mockSetup').style.display = '';
+    $('#mockBody').style.display = 'none';
+  });
+  awardActivity('quiz', `Mock test (${mockTestState.pattern}): ${correct}/${mockTestState.questions.length}`);
+}
 
 function initStudyPlanner(){
   const branchSel = $('#spBranch'), semSel = $('#spSem');
@@ -5180,6 +5845,9 @@ function refreshPageOnEntry(pageId){
   if(pageId === 'aptitude') renderAptitude();
   if(pageId === 'word-of-day') renderWordOfDay();
   if(pageId === 'coding-challenge') renderCodingChallenge();
+  if(pageId === 'forum') renderForum();
+  if(pageId === 'uploads') renderUploads();
+  if(pageId === 'polytechnic') initPolytechnic();
 }
 
 /* The floating AI button is hidden on the homepage — the hero already has
@@ -5214,6 +5882,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initStudyPlanner();
   initForum();
   initNotifications();
+  initInterview();
+  initMockTest(); initResumeChecker(); renderInternships();
+  initUploads();
+  initPolytechnic();
+  $$('[data-poly-anchor]').forEach(el=> el.addEventListener('click', (e)=>{
+    e.preventDefault();
+    sessionStorage.setItem('polyPendingTab', el.dataset.polyAnchor);
+    showPage('polytechnic');
+  }));
   AIChat.init();
   initSearch();
   initPWA();
